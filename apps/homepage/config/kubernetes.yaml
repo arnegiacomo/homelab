@@ -1,0 +1,4 @@
+# Discovers every HTTPRoute annotated with gethomepage.dev/enabled: "true". There are no Ingress objects.
+mode: cluster
+ingress: false
+gateway: true

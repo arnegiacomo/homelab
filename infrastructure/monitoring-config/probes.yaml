@@ -1,0 +1,173 @@
+# Blackbox probes. job is the Probe name, instance is the target.
+# The by-IP targets get a device label with the host name, set per IP in each Probe's relabelingConfigs.
+# A 30s interval flips probe_success to 0 within a minute of a target going down.
+# Router, Home Assistant and the two frames.
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: icmp
+  namespace: monitoring
+spec:
+  jobName: icmp
+  module: icmp
+  interval: 30s
+  prober:
+    url: blackbox-exporter.monitoring:9115
+  targets:
+    staticConfig:
+      static:
+        - 192.168.142.1
+        - 192.168.142.3
+        - 192.168.142.5
+        - 192.168.142.6
+      relabelingConfigs:
+        - sourceLabels: [instance]
+          regex: '(http://)?192\.168\.142\.1([:/].*)?'
+          targetLabel: device
+          replacement: router
+        - sourceLabels: [instance]
+          regex: '(http://)?192\.168\.142\.3([:/].*)?'
+          targetLabel: device
+          replacement: homeassistant
+        - sourceLabels: [instance]
+          regex: '(http://)?192\.168\.142\.5([:/].*)?'
+          targetLabel: device
+          replacement: fugleramme
+        - sourceLabels: [instance]
+          regex: '(http://)?192\.168\.142\.6([:/].*)?'
+          targetLabel: device
+          replacement: fugleramme-kjokken
+---
+# Off-cluster services on the LAN, by IP so they don't depend on Pi-hole: Home Assistant, Ollama on the model server,
+# the frame apps and birdnet-go on fugleramme (.5) and fugleramme-kjokken (.6).
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: http-lan
+  namespace: monitoring
+spec:
+  jobName: http-lan
+  module: http_2xx
+  interval: 30s
+  prober:
+    url: blackbox-exporter.monitoring:9115
+  targets:
+    staticConfig:
+      static:
+        - http://192.168.142.3:8123
+        - http://192.168.142.4:11434/api/version
+        - http://192.168.142.5:8080/health
+        - http://192.168.142.6:8080/health
+        - http://192.168.142.5:8090
+        - http://192.168.142.6:8090
+      relabelingConfigs:
+        - sourceLabels: [instance]
+          regex: '(http://)?192\.168\.142\.3([:/].*)?'
+          targetLabel: device
+          replacement: homeassistant
+        - sourceLabels: [instance]
+          regex: '(http://)?192\.168\.142\.4([:/].*)?'
+          targetLabel: device
+          replacement: llm
+        - sourceLabels: [instance]
+          regex: '(http://)?192\.168\.142\.5([:/].*)?'
+          targetLabel: device
+          replacement: fugleramme
+        - sourceLabels: [instance]
+          regex: '(http://)?192\.168\.142\.6([:/].*)?'
+          targetLabel: device
+          replacement: fugleramme-kjokken
+---
+# The Wyoming voice servers on the model server: Whisper (speech to text, :10300) and Piper (text to speech, :10200).
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: wyoming
+  namespace: monitoring
+spec:
+  jobName: wyoming
+  module: wyoming
+  interval: 30s
+  prober:
+    url: blackbox-exporter.monitoring:9115
+  targets:
+    staticConfig:
+      static:
+        - 192.168.142.4:10300
+        - 192.168.142.4:10200
+      labels:
+        device: llm
+---
+# In-cluster UIs through their home.arpa names, so each probe covers CoreDNS forwarding, Pi-hole, Traefik and the UI.
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: http-cluster
+  namespace: monitoring
+spec:
+  jobName: http-cluster
+  module: http_2xx
+  interval: 30s
+  prober:
+    url: blackbox-exporter.monitoring:9115
+  targets:
+    staticConfig:
+      static:
+        - http://flux.home.arpa
+        - http://grafana.home.arpa
+        - http://pihole.home.arpa
+        - http://home.home.arpa
+        - http://headlamp.home.arpa
+---
+# The public fugleramme instances and the status endpoint through the Cloudflare tunnel. Also exports the cert expiry.
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: http-public
+  namespace: monitoring
+spec:
+  jobName: http-public
+  module: http_2xx
+  interval: 30s
+  prober:
+    url: blackbox-exporter.monitoring:9115
+  targets:
+    staticConfig:
+      static:
+        - https://fugleramme.arnegiacomo.dev/state
+        - https://fugleramme-bergen.arnegiacomo.dev/state
+        - https://status.arnegiacomo.dev
+---
+# Pi-hole answers its local home.arpa records.
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: dns-home-arpa
+  namespace: monitoring
+spec:
+  jobName: dns-home-arpa
+  module: dns_home_arpa
+  interval: 30s
+  prober:
+    url: blackbox-exporter.monitoring:9115
+  targets:
+    staticConfig:
+      static:
+        - 192.168.142.2
+---
+# Pi-hole resolves an external name through unbound.
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: dns-external
+  namespace: monitoring
+spec:
+  jobName: dns-external
+  module: dns_external
+  interval: 30s
+  prober:
+    url: blackbox-exporter.monitoring:9115
+  targets:
+    staticConfig:
+      static:
+        - 192.168.142.2

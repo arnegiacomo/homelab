@@ -1,0 +1,54 @@
+# Recursive resolver, Pi-hole's only upstream. The image's default config listens on 53 and allows 10.0.0.0/8 and 192.168.0.0/16.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: unbound
+  namespace: dns
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: unbound
+  template:
+    metadata:
+      labels:
+        app: unbound
+    spec:
+      containers:
+        - name: unbound
+          image: klutchell/unbound:1.26.2@sha256:50cbeb32b5838a829a7226b19cb151f9535bd7f9f3190f950780f452fe807478
+          ports:
+            - name: dns
+              containerPort: 53
+              protocol: UDP
+            - name: dns-tcp
+              containerPort: 53
+              protocol: TCP
+          readinessProbe:
+            tcpSocket:
+              port: dns-tcp
+          livenessProbe:
+            tcpSocket:
+              port: dns-tcp
+          resources:
+            requests:
+              cpu: 20m
+              memory: 64Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: unbound
+  namespace: dns
+spec:
+  # Fixed, because Pi-hole's upstream must be an IP. Pi-hole runs on the host network and reaches it through kube-proxy.
+  clusterIP: 10.43.0.53
+  selector:
+    app: unbound
+  ports:
+    - name: dns
+      port: 53
+      protocol: UDP
+    - name: dns-tcp
+      port: 53
+      protocol: TCP

@@ -1,0 +1,37 @@
+# Home Assistant's built-in Prometheus integration (`prometheus:` with `namespace: hass` in its configuration.yaml).
+# The long-lived access token is the 1Password item homeassistant-token, created by hand in Home Assistant.
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: homeassistant-token
+  namespace: monitoring
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: onepassword
+  target:
+    name: homeassistant-token
+  data:
+    - secretKey: token
+      remoteRef:
+        key: homeassistant-token/credential
+---
+# By IP, like the probes, so a Pi-hole outage doesn't also cut the metrics.
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
+metadata:
+  name: homeassistant
+  namespace: monitoring
+spec:
+  jobName: homeassistant
+  metricsPath: /api/prometheus
+  scrapeInterval: 60s
+  authorization:
+    type: Bearer
+    credentials:
+      name: homeassistant-token
+      key: token
+  staticConfigs:
+    - targets:
+        - 192.168.142.3:8123

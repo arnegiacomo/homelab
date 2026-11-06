@@ -1,0 +1,161 @@
+# Off-cluster devices and URLs. Cluster UIs come from HTTPRoute annotations (gethomepage.dev/*) and join these groups by name.
+# siteMonitor and ping run from the pod, which resolves home.arpa through CoreDNS and Pi-hole.
+
+# The home and bird digests' values from their last run, served by digest-web. Each name opens the digest's Discord
+# channel, which has the full post. The values change once a day.
+- Digest:
+    - Home digest:
+        icon: mdi-newspaper-variant-outline
+        description: "#home"
+        weight: 1
+        href: https://discord.com/channels/1564345339534639214/1566097029766062312
+        widget:
+          type: customapi
+          url: http://digest-web.digest:8080/home.json
+          refreshInterval: 600000
+          mappings:
+            - field: weather
+              label: Weather
+            - field: rain
+              label: Rain
+            - field: wind
+              label: Wind
+            - field: outages
+              label: Outages
+    - Bird digest:
+        icon: mdi-bird
+        description: "#birds"
+        weight: 2
+        href: https://discord.com/channels/1564345339534639214/1566209517451092098
+        widget:
+          type: customapi
+          url: http://digest-web.digest:8080/birds.json
+          refreshInterval: 600000
+          mappings:
+            - field: species
+              label: Species
+            - field: new
+              label: New
+            - field: bird
+              label: Bird of the day
+- Home:
+    - Home Assistant:
+        icon: home-assistant.png
+        description: Smart home
+        href: http://homeassistant.home.arpa:8123
+        siteMonitor: http://homeassistant.home.arpa:8123
+        # Home Assistant's System Monitor sensors, through its Prometheus integration.
+        widget:
+          type: prometheusmetric
+          url: http://kube-prometheus-stack-prometheus.monitoring:9090
+          refreshInterval: 30000
+          metrics:
+            - label: CPU temp
+              query: hass_sensor_temperature_celsius{entity="sensor.system_monitor_processor_temperature"}
+              format: &celsius
+                type: number
+                suffix: " °C"
+                options:
+                  maximumFractionDigits: 0
+            - label: CPU
+              query: hass_sensor_unit_percent{entity="sensor.system_monitor_processor_use"}
+              format: &percent
+                type: percent
+                options:
+                  maximumFractionDigits: 0
+            - label: Memory
+              query: hass_sensor_unit_percent{entity="sensor.system_monitor_memory_usage"}
+              format: *percent
+            - label: Disk
+              query: hass_sensor_unit_percent{entity="sensor.system_monitor_disk_usage"}
+              format: *percent
+    - homelab:
+        icon: raspberry-pi.png
+        description: k3s node
+        # The Homelab node dashboard in Grafana.
+        href: http://grafana.home.arpa/d/homelab-node
+        ping: 192.168.142.2
+        # Read from node-exporter through Prometheus, so nothing runs on the host. CPU and memory are in the kubernetes widget.
+        widget:
+          type: prometheusmetric
+          url: http://kube-prometheus-stack-prometheus.monitoring:9090
+          refreshInterval: 30000
+          metrics:
+            - label: SoC
+              query: node_thermal_zone_temp{job="node-exporter",type="cpu-thermal"}
+              format: *celsius
+            - label: NVMe
+              query: node_hwmon_temp_celsius{job="node-exporter",chip="nvme_nvme0",sensor="temp1"}
+              format: *celsius
+            - label: Fan
+              query: node_hwmon_fan_rpm{job="node-exporter",chip="platform_cooling_fan"}
+              format:
+                type: number
+                suffix: " rpm"
+            - label: Disk
+              query: 1 - node_filesystem_avail_bytes{job="node-exporter",mountpoint="/"} / node_filesystem_size_bytes{job="node-exporter",mountpoint="/"}
+              format:
+                type: percent
+                scale: 100
+    - Router:
+        icon: mdi-router-wireless
+        description: AmpliFi
+        href: http://192.168.142.1
+        ping: 192.168.142.1
+
+# The admin UI tiles come from the HTTPRoutes (weight 0, so first, by name). The public ones follow in the same order.
+- fugleramme:
+    - fugleramme-bergen public:
+        icon: cloudflare.png
+        description: fugleramme-bergen.arnegiacomo.dev
+        href: https://fugleramme-bergen.arnegiacomo.dev
+        siteMonitor: https://fugleramme-bergen.arnegiacomo.dev/state
+    - fugleramme-pi5 public:
+        icon: cloudflare.png
+        description: fugleramme.arnegiacomo.dev
+        href: https://fugleramme.arnegiacomo.dev
+        siteMonitor: https://fugleramme.arnegiacomo.dev/state
+
+- Frames:
+    - fugleramme:
+        icon: mdi-image-frame
+        description: Frame app
+        href: http://fugleramme.home.arpa:8080
+        siteMonitor: http://fugleramme.home.arpa:8080/health
+    # birdnet-go sends a body on HEAD, on every path, which siteMonitor's HEAD request fails on. So these tiles have no
+    # status dot, and the Status field from its health API stands in for one.
+    # It also reports the device's own CPU, memory and disk.
+    - fugleramme birdnet-go:
+        icon: birdnet.png
+        description: Bird song detection
+        href: http://fugleramme.home.arpa:8090
+        widget:
+          type: customapi
+          url: http://fugleramme.home.arpa:8090/api/v2/health
+          refreshInterval: 30000
+          mappings: &birdnet
+            - field: status
+              label: Status
+            - field: system.cpu_usage
+              label: CPU
+              format: percent
+            - field: system.memory.used_percent
+              label: Memory
+              format: percent
+            - field: system.disk_space.used_percent
+              label: Disk
+              format: percent
+    - fugleramme-kjokken:
+        icon: mdi-image-frame
+        description: Frame app
+        href: http://fugleramme-kjokken.home.arpa:8080
+        siteMonitor: http://fugleramme-kjokken.home.arpa:8080/health
+    - fugleramme-kjokken birdnet-go:
+        icon: birdnet.png
+        description: Bird song detection
+        href: http://fugleramme-kjokken.home.arpa:8090
+        widget:
+          type: customapi
+          url: http://fugleramme-kjokken.home.arpa:8090/api/v2/health
+          refreshInterval: 30000
+          mappings: *birdnet

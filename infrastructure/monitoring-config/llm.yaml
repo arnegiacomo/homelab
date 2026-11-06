@@ -1,0 +1,15 @@
+# node_exporter on the model server (docs/llm.md). By IP, like the probes, so a Pi-hole outage doesn't also cut
+# the metrics. The chart's node rules select job="node-exporter", so they don't apply to this job. Of the homelab
+# rules, only NodeDiskUsageHigh matches a macOS metric, for the Mac's /.
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
+metadata:
+  name: llm
+  namespace: monitoring
+spec:
+  jobName: llm
+  staticConfigs:
+    - targets:
+        - 192.168.142.4:9100
+      labels:
+        instance: llm

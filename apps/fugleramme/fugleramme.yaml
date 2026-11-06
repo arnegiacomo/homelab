@@ -1,0 +1,96 @@
+# /data holds settings.json (the app writes to it), frame.png and the name lists, owned by uid 1000, the image's user.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: fugleramme-data
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fugleramme
+spec:
+  # One writer per data volume.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: fugleramme
+  template:
+    metadata:
+      labels:
+        app: fugleramme
+    spec:
+      containers:
+        - name: fugleramme
+          image: ghcr.io/arnegiacomo/fugleramme:0.31.1@sha256:21685a84225e2e78c44af601577118f09ed7f4f3752ffaa5bad44016d3243801
+          env:
+            - name: TZ
+              value: Europe/Oslo
+          ports:
+            - name: http
+              containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 30
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 50m
+              memory: 512Mi
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: fugleramme-data
+---
+# Port 8080, so the tunnel config reaches it at http://fugleramme:8080.
+apiVersion: v1
+kind: Service
+metadata:
+  name: fugleramme
+spec:
+  selector:
+    app: fugleramme
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: fugleramme
+  annotations:
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/name: fugleramme-pi5
+    gethomepage.dev/description: Admin UI
+    gethomepage.dev/group: fugleramme
+    gethomepage.dev/icon: mdi-bird
+    gethomepage.dev/href: http://fugleramme-pi5.home.arpa/admin
+    gethomepage.dev/pod-selector: app=fugleramme
+spec:
+  parentRefs:
+    - name: homelab
+      namespace: traefik
+  hostnames:
+    - fugleramme-pi5.home.arpa
+  rules:
+    - backendRefs:
+        - name: fugleramme
+          port: 8080

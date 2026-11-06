@@ -1,0 +1,50 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: traefik
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: OCIRepository
+metadata:
+  name: traefik
+  namespace: traefik
+spec:
+  interval: 1h
+  url: oci://ghcr.io/traefik/helm/traefik
+  layerSelector:
+    mediaType: application/vnd.cncf.helm.chart.content.v1.tar+gzip
+    operation: copy
+  ref:
+    tag: 42.2.0
+    digest: sha256:65e1a6dbcd5e346167b3d9c470ba8b444f1a2462c31d6e8e21290f68fd83963a
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: traefik
+  namespace: traefik
+spec:
+  interval: 1h
+  chartRef:
+    kind: OCIRepository
+    name: traefik
+  # The traefik.io CRDs ship in the chart's crds/ dir, which Helm skips on upgrade by default.
+  install:
+    crds: CreateReplace
+  upgrade:
+    crds: CreateReplace
+  values:
+    providers:
+      kubernetesIngress:
+        enabled: false
+      kubernetesGateway:
+        enabled: true
+    ingressClass:
+      enabled: false
+    # The shared Gateway lives in infrastructure/config. The chart still creates the `traefik` GatewayClass.
+    gateway:
+      enabled: false
+    ports:
+      websecure:
+        expose:
+          default: false

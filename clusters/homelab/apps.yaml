@@ -1,0 +1,20 @@
+# Apps go after the infra layers: they need the ClusterSecretStore and the Gateway from infra-config,
+# and resolve home.arpa names through CoreDNS and Pi-hole from infra-dns.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: apps
+  namespace: flux-system
+spec:
+  dependsOn:
+    - name: infra-config
+    - name: infra-dns
+  interval: 1h
+  retryInterval: 1m
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  path: ./apps
+  timeout: 5m
+  prune: true
+  wait: true

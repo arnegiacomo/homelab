@@ -1,0 +1,6 @@
+# Pi-hole blocklists, one URL per line. Applied when the pod starts; see docs/dns.md.
+https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts
+# HaGeZi Multi Pro (adblock format, which HaGeZi recommends for Pi-hole): https://github.com/hagezi/dns-blocklists
+https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/pro.txt
+# HaGeZi Encrypted DNS Bypass: blocks DoH/DoT providers, so browsers that switch to encrypted DNS (Chrome does when 1.1.1.1 is a system resolver) fall back to Pi-hole
+https://raw.githubusercontent.com/hagezi/dns-blocklists/main/adblock/doh.txt

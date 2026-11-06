@@ -1,0 +1,28 @@
+title: Homelab
+theme: dark
+color: slate
+headerStyle: clean
+statusStyle: dot
+cardStyle: hairline
+blockStyle: refined
+useEqualHeights: true
+hideVersion: true
+# Group order. Groups come from services.yaml and from the gethomepage.dev/group annotation on HTTPRoutes.
+# Row groups are one column below 768px, two up to 1024px, and `columns` above.
+layout:
+  # The home and bird digest tiles, side by side from 1024px.
+  Digest:
+    style: row
+    columns: 2
+  Home:
+    style: row
+    columns: 3
+  Cluster:
+    style: row
+    columns: 4
+  fugleramme:
+    style: row
+    columns: 4
+  Frames:
+    style: row
+    columns: 4

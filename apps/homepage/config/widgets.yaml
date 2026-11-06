@@ -1,0 +1,9 @@
+# CPU and memory from metrics-server. Temperatures are on the homelab tile in services.yaml.
+- kubernetes:
+    cluster:
+      show: false
+    nodes:
+      show: true
+      cpu: true
+      memory: true
+      showLabel: true

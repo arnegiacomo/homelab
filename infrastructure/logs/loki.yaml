@@ -1,0 +1,99 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: OCIRepository
+metadata:
+  name: loki
+  namespace: monitoring
+spec:
+  interval: 1h
+  # The OSS Loki chart moved from grafana/helm-charts to grafana-community/helm-charts in March 2026.
+  url: oci://ghcr.io/grafana-community/helm-charts/loki
+  layerSelector:
+    mediaType: application/vnd.cncf.helm.chart.content.v1.tar+gzip
+    operation: copy
+  ref:
+    tag: 20.2.1
+    digest: sha256:7110103eba8b13debe9ed745f21abd352190a7fc5cd676fd3263e86252afd5ed
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: loki
+  namespace: monitoring
+spec:
+  interval: 1h
+  timeout: 10m
+  chartRef:
+    kind: OCIRepository
+    name: loki
+  values:
+    deploymentMode: Monolithic
+    loki:
+      # Single tenant, so clients need no X-Scope-OrgID header.
+      auth_enabled: false
+      commonConfig:
+        replication_factor: 1
+      storage:
+        type: filesystem
+      schemaConfig:
+        configs:
+          - from: "2026-10-01"
+            store: tsdb
+            object_store: filesystem
+            schema: v13
+            index:
+              prefix: index_
+              period: 24h
+      limits_config:
+        retention_period: 30d
+      # The compactor deletes chunks older than retention_period.
+      compactor:
+        retention_enabled: true
+        delete_request_store: filesystem
+
+    singleBinary:
+      replicas: 1
+      persistence:
+        storageClass: local-path
+        size: 10Gi
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          memory: 1Gi
+    # The simple scalable targets default to 3 replicas each.
+    read:
+      replicas: 0
+    write:
+      replicas: 0
+    backend:
+      replicas: 0
+
+    # No log-based alerts, so no ruler. Alerts are Prometheus rules.
+    ruler:
+      enabled: false
+    # Alloy pushes straight to the Loki service, and there is only one tenant.
+    gateway:
+      enabled: false
+    lokiCanary:
+      enabled: false
+    # The Helm test needs the canary.
+    test:
+      enabled: false
+    chunksCache:
+      enabled: false
+    resultsCache:
+      enabled: false
+    memcached:
+      enabled: false
+    # The rules sidecar loads ruler rules from ConfigMaps. Without it Loki needs no RBAC, and namespaced skips the
+    # chart's ClusterRole for reading every ConfigMap and Secret.
+    sidecar:
+      rules:
+        enabled: false
+    rbac:
+      namespaced: true
+
+    monitoring:
+      serviceMonitor:
+        enabled: true

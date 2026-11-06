@@ -1,0 +1,108 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", "helpers:pinGitHubActionDigests"],
+  "dependencyDashboard": false,
+  "semanticCommits": "enabled",
+  "timezone": "Europe/Oslo",
+  "schedule": ["* 0-5 * * 1"],
+  "minimumReleaseAge": "3 days",
+  "minimumReleaseAgeBehaviour": "timestamp-required",
+  "internalChecksFilter": "strict",
+  "flux": {
+    "managerFilePatterns": ["/^(apps|clusters|infrastructure)/.+\\.ya?ml$/"]
+  },
+  "kubernetes": {
+    "managerFilePatterns": ["/^(apps|clusters|infrastructure)/.+\\.ya?ml$/"]
+  },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Versions with a `# renovate: datasource=... depName=... [extractVersion=...]` comment on the line above",
+      "managerFilePatterns": [
+        "/^bootstrap/.+\\.sh$/",
+        "/^clusters/.+\\.ya?ml$/",
+        "/^infrastructure/.+\\.ya?ml$/",
+        "/^\\.github/workflows/.+\\.ya?ml$/"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?: extractVersion=(?<extractVersion>\\S+))?\\s*\\n\\s*[\\w.-]+(?::|=) *\"?(?<currentValue>[^\\s\"]+)"
+      ]
+    },
+    {
+      "customType": "regex",
+      "description": "Kustomize resources that point at GitHub release assets, e.g. the system-upgrade-controller manifests",
+      "managerFilePatterns": ["/^(apps|clusters|infrastructure)/.+/kustomization\\.ya?ml$/"],
+      "matchStrings": ["https://github\\.com/(?<depName>[\\w.-]+/[\\w.-]+)/releases/download/(?<currentValue>[^/\\s]+)/"],
+      "datasourceTemplate": "github-releases"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "Images and OCI charts in the manifests are pinned as tag@sha256:digest, so a re-pushed tag can't change what runs. The tag and digest are updated together.",
+      "matchDatasources": ["docker"],
+      "matchManagers": ["kubernetes", "flux", "kustomize"],
+      "pinDigests": true
+    },
+    {
+      "description": "Only Docker Hub gives docker release timestamps, so images and OCI charts from any other registry (GHCR, Quay) can't be aged. Without this, timestamp-required would hold them forever.",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["/^[a-z0-9-]+(\\.[a-z0-9-]+)+(:\\d+)?//", "!docker.io/**", "!index.docker.io/**"],
+      "minimumReleaseAge": null
+    },
+    {
+      "description": "system-upgrade-controller: the release manifests and the image pinned in its kustomization.yaml move together.",
+      "matchPackageNames": ["rancher/system-upgrade-controller"],
+      "groupName": "system-upgrade-controller"
+    },
+    {
+      "description": "Calendar versions YYYY.MM.N: a new year is a major, a new month a minor, N a patch. Also skips the -arm64 and build tags.",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["cloudflare/cloudflared", "pihole/pihole"],
+      "versioning": "regex:^(?<major>\\d{4})\\.(?<minor>\\d+)\\.(?<patch>\\d+)$"
+    },
+    {
+      "description": "The Flux Operator chart is pinned in flux-operator.yaml and bootstrap.sh. Bump both in one commit.",
+      "matchPackageNames": ["ghcr.io/controlplaneio-fluxcd/charts/flux-operator"],
+      "groupName": "flux-operator"
+    },
+    {
+      "description": "k3s versions look like v1.36.5+k3s1: a new Kubernetes minor is a minor, patches and k3sN rebuilds are patches.",
+      "matchPackageNames": ["k3s-io/k3s"],
+      "versioning": "regex:^v(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)\\+k3s(?<build>\\d+)$"
+    },
+    {
+      "description": "Every non-major update except fugleramme lands in one weekly PR, merged by hand.",
+      "matchPackageNames": ["!ghcr.io/arnegiacomo/fugleramme"],
+      "matchUpdateTypes": ["minor", "patch", "digest", "pin", "pinDigest"],
+      "groupName": "weekly updates"
+    },
+    {
+      "description": "The Gateway API CRDs have to match what Traefik's kubernetesGateway provider supports, so a minor gets its own PR.",
+      "matchPackageNames": ["kubernetes-sigs/gateway-api"],
+      "matchUpdateTypes": ["minor"],
+      "groupName": "gateway-api minor"
+    },
+    {
+      "description": "Kubernetes upgrades one minor at a time and needs the charts to support it, so a k3s minor gets its own PR.",
+      "matchPackageNames": ["k3s-io/k3s"],
+      "matchUpdateTypes": ["minor", "major"],
+      "groupName": "k3s minor"
+    },
+    {
+      "description": "fugleramme is first-party: every release, majors and re-pushed tags too, goes straight to main once CI is green, at any time. It also publishes major.minor tags like 0.29; only follow full versions.",
+      "matchPackageNames": ["ghcr.io/arnegiacomo/fugleramme"],
+      "minimumReleaseAge": null,
+      "versioning": "semver",
+      "schedule": ["at any time"],
+      "automerge": true,
+      "automergeType": "branch",
+      "automergeSchedule": ["at any time"]
+    },
+    {
+      "description": "The upgrade Plan's image has no tag: the controller appends the Plan's version, so it can't carry a digest.",
+      "matchManagers": ["kubernetes"],
+      "matchPackageNames": ["rancher/k3s-upgrade"],
+      "enabled": false
+    }
+  ]
+}

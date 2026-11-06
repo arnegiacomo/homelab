@@ -1,0 +1,215 @@
+# The digests post to Discord, and the home and bird digests write their tile values into the ConfigMap digest-latest,
+# which digest-web serves to their Homepage tiles.
+# digest-state keeps numbers from one run to the next, e.g. a repo's stars, for the change since yesterday.
+# Flux creates both once and then leaves them to the jobs (ssa: IfNotPresent), so a reconcile doesn't reset them.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: digest-latest
+  annotations:
+    kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: digest-state
+  annotations:
+    kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: digest
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: digest
+rules:
+  - apiGroups: [""]
+    resources: [configmaps]
+    resourceNames: [digest-latest, digest-state]
+    verbs: [get, patch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: digest
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: digest
+subjects:
+  - kind: ServiceAccount
+    name: digest
+---
+# Each CronJob states only its own schedule, command and env. The rest is in cronjob.yaml.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: home-digest
+spec:
+  schedule: "0 7 * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: digest
+              command: [bun, run, /app/home.ts]
+              env:
+                - name: PROMETHEUS_URL
+                  value: http://kube-prometheus-stack-prometheus.monitoring:9090
+                - name: GITHUB_REPO
+                  value: arnegiacomo/homelab
+                # Home, as set in BirdNET-Go on the frames.
+                - name: WEATHER_LAT
+                  value: "60.39"
+                - name: WEATHER_LON
+                  value: "5.32"
+                - name: DISCORD_WEBHOOK
+                  valueFrom:
+                    secretKeyRef:
+                      name: digest
+                      key: discord-home-webhook
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: fugleramme-digest
+spec:
+  schedule: "5 7 * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: digest
+              command: [bun, run, /app/repo.ts]
+              env:
+                - name: GITHUB_REPO
+                  value: arnegiacomo/fugleramme
+                - name: GITHUB_PACKAGE
+                  value: fugleramme
+                # Artwork PRs, merged in batches. Grouped into one line.
+                - name: ARTWORK_PREFIX
+                  value: "chore(assets): "
+                - name: DISCORD_WEBHOOK
+                  valueFrom:
+                    secretKeyRef:
+                      name: digest
+                      key: discord-repos-webhook
+---
+# The bird digest, in Norwegian, about yesterday at home. Before it runs, fugleramme renders one image of the day's
+# birds from both frames: birdnet-proxy.ts stands in for BirdNET-Go as a sidecar, fugleramme renders once (--preview)
+# into /render, and the digest attaches that file. Nothing keeps running after the Job.
+# For another day, set BIRD_DATE (yyyy-mm-dd) on both the proxy and the digest on a manual run.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: bird-digest
+spec:
+  schedule: "10 7 * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          initContainers:
+            # A native sidecar: it starts first, the next init container waits for its startup probe, and it's
+            # stopped when the digest is done.
+            - name: proxy
+              image: oven/bun:1.4.4-alpine@sha256:4cf82f5686b196504fe119db3fcd9185b191f82ece82c40680e597228ec6070a
+              restartPolicy: Always
+              command: [bun, run, /app/birdnet-proxy.ts]
+              env:
+                # BirdNET-Go on the two frames at home, by name, since pods can't resolve .local.
+                - name: BIRD_STATIONS
+                  value: &stations kjøkken=http://fugleramme-kjokken.home.arpa:8090,stue=http://fugleramme.home.arpa:8090
+                - name: HOME
+                  value: /tmp
+              startupProbe:
+                httpGet:
+                  path: /api/v2/ping
+                  port: 8090
+                periodSeconds: 1
+                failureThreshold: 30
+              securityContext: &restricted
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: [ALL]
+              resources:
+                requests:
+                  cpu: 20m
+                  memory: 32Mi
+                limits:
+                  memory: 128Mi
+              volumeMounts:
+                - name: code
+                  mountPath: /app
+                  readOnly: true
+                - name: tmp
+                  mountPath: /tmp
+            # The same image as the fugleramme app, so Renovate bumps them together. The settings are seeded by env:
+            # all time is fine, since the proxy only serves the day. Landscape 1440p without names, a few MB, well under
+            # Discord's 10 MB.
+            - name: render
+              image: ghcr.io/arnegiacomo/fugleramme:0.31.1@sha256:21685a84225e2e78c44af601577118f09ed7f4f3752ffaa5bad44016d3243801
+              command:
+                - fugleramme-frame
+                - --config
+                - /tmp/fugleramme/settings.json
+                - --detector
+                - http://127.0.0.1:8090
+                - --preview
+                - /render/fugler.png
+              env:
+                - name: TZ
+                  value: Europe/Oslo
+                - name: HOME
+                  value: /tmp
+                - name: FUGLERAMME_MODE
+                  value: collage
+                - name: FUGLERAMME_LOOKBACK_HOURS
+                  value: "0"
+                - name: FUGLERAMME_SPECIES_LIMIT
+                  value: "0"
+                - name: FUGLERAMME_WEB_RESOLUTION
+                  value: 1440p
+                - name: FUGLERAMME_WEB_ASPECT
+                  value: "16:10"
+                - name: FUGLERAMME_SHOW_NAMES
+                  value: "false"
+              securityContext: *restricted
+              resources:
+                requests:
+                  cpu: 200m
+                  memory: 256Mi
+                limits:
+                  memory: 1Gi
+              volumeMounts:
+                - name: render
+                  mountPath: /render
+                - name: tmp
+                  mountPath: /tmp
+          containers:
+            - name: digest
+              command: [bun, run, /app/birds.ts]
+              env:
+                - name: BIRD_STATIONS
+                  value: *stations
+                - name: COLLAGE_FILE
+                  value: /render/fugler.png
+                - name: DISCORD_WEBHOOK
+                  valueFrom:
+                    secretKeyRef:
+                      name: digest
+                      key: discord-birds-webhook
+              volumeMounts:
+                - name: render
+                  mountPath: /render
+                  readOnly: true
+          volumes:
+            - name: render
+              emptyDir:
+                sizeLimit: 64Mi

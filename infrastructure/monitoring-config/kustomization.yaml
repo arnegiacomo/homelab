@@ -1,0 +1,31 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - flux.yaml
+  - probes.yaml
+  - homeassistant.yaml
+  - llm.yaml
+  - alerts.yaml
+# The Grafana sidecar loads every ConfigMap labelled grafana_dashboard=1, in any namespace.
+generatorOptions:
+  disableNameSuffixHash: true
+  labels:
+    grafana_dashboard: "1"
+configMapGenerator:
+  - name: dashboard-homelab-node
+    namespace: monitoring
+    files:
+      - dashboards/homelab-node.json
+  - name: dashboard-homelab-uptime
+    namespace: monitoring
+    files:
+      - dashboards/homelab-uptime.json
+  - name: dashboard-homeassistant
+    namespace: monitoring
+    files:
+      - dashboards/homeassistant.json
+  # From config/monitoring/dashboards in controlplaneio-fluxcd/flux-operator.
+  - name: dashboard-flux-performance
+    namespace: monitoring
+    files:
+      - dashboards/flux-performance.json

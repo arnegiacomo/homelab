@@ -1,0 +1,27 @@
+# Flux Operator's recommended scrape config (config/monitoring in controlplaneio-fluxcd/flux-operator).
+# The operator exports flux_resource_info for every Flux object; the controllers export controller-runtime metrics.
+# Flux's allow-scraping NetworkPolicy admits port 8080 from all namespaces.
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: flux-controllers
+  namespace: flux-system
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/part-of: flux
+  podMetricsEndpoints:
+    - port: http-prom
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: flux-operator
+  namespace: flux-system
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: flux-operator
+  endpoints:
+    - targetPort: 8080
+      path: /metrics

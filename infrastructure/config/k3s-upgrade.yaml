@@ -1,0 +1,25 @@
+# Pins the k3s version of the server node. bootstrap/run.sh installs the same version on a fresh host.
+# The controller runs a Job on every node without the label plan.upgrade.cattle.io/k3s-server=<status.latestHash>.
+# Single node, so cordon only: a drain would evict the controller and everything else.
+apiVersion: upgrade.cattle.io/v1
+kind: Plan
+metadata:
+  name: k3s-server
+  namespace: system-upgrade
+spec:
+  concurrency: 1
+  cordon: true
+  nodeSelector:
+    matchExpressions:
+      - {key: node-role.kubernetes.io/control-plane, operator: Exists}
+  serviceAccountName: system-upgrade
+  upgrade:
+    image: rancher/k3s-upgrade
+  # renovate: datasource=github-releases depName=k3s-io/k3s
+  version: v1.37.1+k3s1
+  # Jobs only start in this window. One that has started may run past it.
+  window:
+    days: [monday, tuesday, wednesday, thursday, friday, saturday, sunday]
+    startTime: "00:00"
+    endTime: "06:00"
+    timeZone: Europe/Oslo

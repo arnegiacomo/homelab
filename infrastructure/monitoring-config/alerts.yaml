@@ -1,0 +1,127 @@
+# Homelab alerts on top of the kube-prometheus-stack defaults. The defaults already cover node not ready
+# (KubeNodeNotReady), memory pressure (NodeMemoryHighUtilization) and crashlooping pods (KubePodCrashLooping).
+# Every alert has a summary and a description; the Discord message shows both.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: homelab
+  namespace: monitoring
+spec:
+  groups:
+    - name: homelab-node
+      rules:
+        # local-path PVs live in /var/lib/rancher/k3s/storage, which is on / unless it gets its own mount.
+        - alert: NodeDiskUsageHigh
+          expr: |
+            100 * (1 - node_filesystem_avail_bytes{mountpoint=~"/|/var/lib/rancher/k3s/storage"}
+              / node_filesystem_size_bytes{mountpoint=~"/|/var/lib/rancher/k3s/storage"}) > 85
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: Disk usage on {{ $labels.mountpoint }} is high
+            description: '{{ $labels.mountpoint }} is {{ $value | printf "%.0f" }}% full.'
+        # The Pi 5 starts throttling at 85C.
+        - alert: NodeTemperatureHigh
+          expr: node_thermal_zone_temp{type="cpu-thermal"} > 75
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: SoC temperature is high
+            description: The SoC has been at {{ $value | printf "%.0f" }}C for 10 minutes.
+        # From bootstrap's apt-metrics timer. unattended-upgrades reboots at REBOOT_TIME (default 04:00) when an
+        # update needs it, so a flag that stays for 2 days means the automatic reboot isn't happening.
+        - alert: RebootRequired
+          expr: node_reboot_required == 1
+          for: 2d
+          labels:
+            severity: warning
+          annotations:
+            summary: homelab has needed a reboot for 2 days
+            description: /run/reboot-required has existed for 2 days, so the automatic reboot isn't working. Check `journalctl -u apt-daily-upgrade` and `/var/log/unattended-upgrades/` on homelab, then reboot it.
+        # From bootstrap's homelab-backup timer, which runs nightly at 03:00. A failed run, a missing disk or a
+        # stopped timer all leave the timestamp behind. The second rule covers a host that has never written it.
+        - alert: BackupMissing
+          expr: time() - homelab_backup_last_success_timestamp_seconds > 26 * 3600
+          labels:
+            severity: warning
+          annotations:
+            summary: No backup for over 26 hours
+            description: The last successful backup was {{ $value | humanizeDuration }} ago. Check `journalctl -u homelab-backup` on homelab and that the backup disk is plugged in.
+        - alert: BackupMissing
+          expr: absent(homelab_backup_last_success_timestamp_seconds)
+          for: 26h
+          labels:
+            severity: warning
+          annotations:
+            summary: No backup for over 26 hours
+            description: No backup has succeeded since Prometheus started. Check `journalctl -u homelab-backup` on homelab and that the backup disk is plugged in.
+
+    - name: homelab-probes
+      rules:
+        - alert: ProbeFailed
+          expr: probe_success == 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: '{{ with $labels.device }}{{ . }}: {{ end }}{{ $labels.instance }} is down'
+            description: The {{ $labels.job }} probe of {{ $labels.instance }} has failed for 5 minutes.
+        # Both DNS probes fail when Pi-hole is down. Alertmanager then holds back the dns-* and http-cluster
+        # ProbeFailed alerts, since the cluster UIs are probed by home.arpa name.
+        - alert: PiholeDown
+          expr: max by (instance) (probe_success{job=~"dns-home-arpa|dns-external"}) == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: Pi-hole is down
+            description: Pi-hole on {{ $labels.instance }} has not answered DNS queries for 2 minutes.
+        # A failed scrape of a probe job means the exporter didn't answer, not that the target is down.
+        - alert: BlackboxExporterDown
+          expr: |
+            count(up{job=~"icmp|http-.*|dns-.*|wyoming"} == 0) > 0
+              or absent(up{job=~"icmp|http-.*|dns-.*|wyoming"})
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: Blackbox exporter is down
+            description: Probe scrapes are failing or missing, so the uptime probes are not running.
+        - alert: CertificateExpiringSoon
+          expr: probe_ssl_earliest_cert_expiry{job="http-public"} - time() < 14 * 86400
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            summary: Certificate for {{ $labels.instance }} expires soon
+            description: The certificate for {{ $labels.instance }} expires in {{ $value | humanizeDuration }}.
+
+    - name: homelab-flux
+      rules:
+        # Aggregated so a resource that goes from Unknown to False stays the same alert. Sources are included, because
+        # a source that stops fetching (e.g. an expired GitHub token) leaves the Kustomizations Ready on the old revision.
+        - alert: FluxResourceNotReady
+          expr: |
+            max by (kind, exported_namespace, name) (
+              flux_resource_info{kind=~"Kustomization|HelmRelease|GitRepository|OCIRepository|HelmRepository|HelmChart", ready!="True", suspended="False"}
+            )
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: '{{ $labels.kind }} {{ $labels.exported_namespace }}/{{ $labels.name }} is not Ready'
+            description: '{{ $labels.kind }} {{ $labels.exported_namespace }}/{{ $labels.name }} has not been Ready for 15 minutes. Check it with `flux get all -A`.'
+
+    - name: homelab-upgrades
+      rules:
+        # Counts failed pods, so it fires on the first failed attempt. The controller deletes the Job 15 minutes
+        # after it finishes, which resolves the alert; the Plan's Complete condition keeps the error.
+        - alert: K3sUpgradeJobFailed
+          expr: max by (job_name) (kube_job_status_failed{namespace="system-upgrade"}) > 0
+          labels:
+            severity: critical
+          annotations:
+            summary: k3s upgrade job {{ $labels.job_name }} failed
+            description: 'An upgrade job in system-upgrade has failed pods. Check `kubectl -n system-upgrade get plans,jobs,pods` and the job logs.'

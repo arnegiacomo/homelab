@@ -1,0 +1,192 @@
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: pihole-admin
+  namespace: dns
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: onepassword
+  target:
+    name: pihole-admin
+  data:
+    - secretKey: password
+      remoteRef:
+        key: pihole-admin/password
+---
+# /etc/pihole: the query log, and the gravity database with its list cache and backups. The start script deletes pihole.toml, so FTL writes it fresh from the env.
+# Named for the query log, which was all it held at first. The files stay at their default paths: gravity runs through
+# sudo, which drops the env, so it ignores FTLCONF_files_*.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pihole-ftl-db
+  namespace: dns
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pihole
+  namespace: dns
+spec:
+  replicas: 1
+  # Host port 53 and the RWO volume can't be shared between two pods.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: pihole
+  template:
+    metadata:
+      labels:
+        app: pihole
+    spec:
+      # Answers on every host address (LAN and tailscale0) and sees the real client IPs.
+      hostNetwork: true
+      # The host resolver (1.1.1.1), so gravity can download the lists before Pi-hole is up.
+      dnsPolicy: Default
+      containers:
+        - name: pihole
+          image: pihole/pihole:2026.10.1@sha256:30f803ad5dd60ff96cc0a63008a2e9271af481c1b0399a182192b2e91152c1f9
+          # Resets /etc/pihole to git, then runs the image's start.sh.
+          command: [bash, /homelab/pihole-start.sh]
+          env:
+            - name: TZ
+              value: Europe/Oslo
+            - name: FTLCONF_webserver_api_password
+              valueFrom:
+                secretKeyRef:
+                  name: pihole-admin
+                  key: password
+            # Off 80 and 443: on the host network those belong to Traefik's servicelb.
+            - name: FTLCONF_webserver_port
+              value: "8053"
+            - name: FTLCONF_dns_upstreams
+              value: 10.43.0.53
+            # Clients reach it from the LAN, the tailnet and the pod network, so accept queries from every origin.
+            - name: FTLCONF_dns_listeningMode
+              value: ALL
+            # No NTP server or client. The host keeps its own time.
+            - name: FTLCONF_ntp_ipv4_active
+              value: "false"
+            - name: FTLCONF_ntp_ipv6_active
+              value: "false"
+            - name: FTLCONF_ntp_sync_active
+              value: "false"
+            # One "<ip> <name>" per line.
+            - name: FTLCONF_dns_hosts
+              value: |
+                192.168.142.2 homelab.home.arpa
+                192.168.142.2 home.home.arpa
+                192.168.142.2 grafana.home.arpa
+                192.168.142.2 pihole.home.arpa
+                192.168.142.2 flux.home.arpa
+                192.168.142.2 headlamp.home.arpa
+                192.168.142.2 fugleramme-pi5.home.arpa
+                192.168.142.2 fugleramme-bergen.home.arpa
+                192.168.142.3 homeassistant.home.arpa
+                192.168.142.4 llm.home.arpa
+                192.168.142.5 fugleramme.home.arpa
+                192.168.142.6 fugleramme-kjokken.home.arpa
+          ports:
+            - name: web
+              containerPort: 8053
+              protocol: TCP
+          # Without a gravity database, gravity runs before FTL starts, so allow a few minutes for the list downloads.
+          startupProbe:
+            exec:
+              command: [sh, -c, "dig +short +time=2 +tries=1 @127.0.0.1 homelab.home.arpa | grep -qx 192.168.142.2"]
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            exec:
+              command: [sh, -c, "dig +short +time=2 +tries=1 @127.0.0.1 homelab.home.arpa | grep -qx 192.168.142.2"]
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command: [dig, +short, +norecurse, +time=2, +tries=1, "@127.0.0.1", pi.hole]
+            periodSeconds: 30
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+          volumeMounts:
+            - name: etc-pihole
+              mountPath: /etc/pihole
+            - name: adlists
+              mountPath: /etc/pihole/adlists.list
+              subPath: adlists.list
+            - name: start
+              mountPath: /homelab
+      volumes:
+        - name: etc-pihole
+          persistentVolumeClaim:
+            claimName: pihole-ftl-db
+        - name: adlists
+          configMap:
+            name: pihole-adlists
+        - name: start
+          configMap:
+            name: pihole-start
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pihole-web
+  namespace: dns
+spec:
+  selector:
+    app: pihole
+  ports:
+    - name: http
+      port: 80
+      targetPort: web
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: pihole
+  namespace: dns
+  annotations:
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/name: Pi-hole
+    gethomepage.dev/description: DNS and ad blocking
+    gethomepage.dev/group: Cluster
+    gethomepage.dev/icon: pi-hole.png
+    gethomepage.dev/href: http://pihole.home.arpa/admin/
+    gethomepage.dev/pod-selector: app=pihole
+    gethomepage.dev/widget.type: pihole
+    gethomepage.dev/widget.version: "6"
+    gethomepage.dev/widget.url: http://pihole-web.dns
+    gethomepage.dev/widget.key: "{{HOMEPAGE_VAR_PIHOLE_PASSWORD}}"
+spec:
+  parentRefs:
+    - name: homelab
+      namespace: traefik
+  hostnames:
+    - pihole.home.arpa
+  rules:
+    # The UI lives under /admin/.
+    - matches:
+        - path:
+            type: Exact
+            value: /
+      filters:
+        - type: RequestRedirect
+          requestRedirect:
+            path:
+              type: ReplaceFullPath
+              replaceFullPath: /admin/
+            statusCode: 302
+    - backendRefs:
+        - name: pihole-web
+          port: 80

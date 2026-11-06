@@ -1,0 +1,13 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: fugleramme
+resources:
+  - namespace.yaml
+  - fugleramme.yaml
+  - fugleramme-bergen.yaml
+  - cloudflared.yaml
+configMapGenerator:
+  # The hash suffix makes a config change roll the cloudflared pod.
+  - name: cloudflared-config
+    files:
+      - config.yml=cloudflared-config.yml

@@ -1,0 +1,17 @@
+# Discord webhook for Alertmanager (docs/discord.md). Mounted through alertmanagerSpec.secrets in kube-prometheus-stack.yaml.
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: alertmanager-discord
+  namespace: monitoring
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: onepassword
+  target:
+    name: alertmanager-discord
+  data:
+    - secretKey: webhook-url
+      remoteRef:
+        key: discord-alerts-webhook/credential

@@ -1,0 +1,165 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: headlamp
+spec:
+  interval: 1h
+  # The chart's OCI copy on ghcr.io isn't public.
+  url: https://kubernetes-sigs.github.io/headlamp/
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: headlamp
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: headlamp
+      version: 0.46.0
+      sourceRef:
+        kind: HelmRepository
+        name: headlamp
+  values:
+    config:
+      # How long the login cookie lasts, in seconds (7 days). The token itself expires on its own. Keep it under
+      # 1000000: Helm prints larger numbers from values as e.g. 2.592e+06, which the flag doesn't parse.
+      sessionTTL: 604800
+      # No OIDC, so no (empty) oidc Secret.
+      oidc:
+        secret:
+          create: false
+    # Every request goes to the API with the token the user logs in with, so the pod's own ServiceAccount needs no rights.
+    # The chart's default binds it to cluster-admin.
+    clusterRoleBinding:
+      create: false
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 100
+      runAsGroup: 101
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop: [ALL]
+    resources:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+    # The Flux plugin, from its release tarball (checksum as on Artifact Hub). An init container instead of the chart's
+    # plugin manager, which keeps a node sidecar running.
+    initContainers:
+      - name: flux-plugin
+        image: alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
+        command:
+          - sh
+          - -ec
+          - |
+            wget -qO /tmp/flux.tgz https://github.com/headlamp-k8s/plugins/releases/download/flux-0.7.0/headlamp-k8s-flux-0.7.0.tar.gz
+            echo '837dc962a4ca485b86b010e5a3463d3ffc71c51778125394f006a210921b7c65  /tmp/flux.tgz' | sha256sum -c
+            tar -xzf /tmp/flux.tgz -C /headlamp/plugins
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 100
+          runAsGroup: 101
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: [ALL]
+        volumeMounts:
+          - name: plugins
+            mountPath: /headlamp/plugins
+          - name: plugins-tmp
+            mountPath: /tmp
+    volumeMounts:
+      - name: plugins
+        mountPath: /headlamp/plugins
+      # Headlamp creates its (unused) user plugins dir here on start.
+      - name: config
+        mountPath: /home/headlamp/.config
+    volumes:
+      - name: plugins
+        emptyDir: {}
+      - name: config
+        emptyDir: {}
+      - name: plugins-tmp
+        emptyDir: {}
+---
+# The login identity. Owner steps for the token are in docs/apps.md (Headlamp).
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: headlamp-viewer
+  namespace: headlamp
+---
+# Read-only. view covers workloads, services, config maps, pod logs and, through Flux's aggregate-to-view roles,
+# Flux's resources. It leaves out Secrets.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: headlamp-viewer-view
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+subjects:
+  - kind: ServiceAccount
+    name: headlamp-viewer
+    namespace: headlamp
+---
+# What view leaves out but the Map and the Flux plugin read: nodes, storage, CRDs (the plugin checks for Flux's),
+# the Gateway API routes and the Flux Operator's FluxInstance and FluxReport.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: headlamp-viewer
+rules:
+  - apiGroups: [""]
+    resources: [nodes, persistentvolumes]
+    verbs: [get, list, watch]
+  - apiGroups: [storage.k8s.io]
+    resources: [storageclasses]
+    verbs: [get, list, watch]
+  - apiGroups: [apiextensions.k8s.io]
+    resources: [customresourcedefinitions]
+    verbs: [get, list, watch]
+  - apiGroups: [gateway.networking.k8s.io]
+    resources: ["*"]
+    verbs: [get, list, watch]
+  - apiGroups: [fluxcd.controlplane.io]
+    resources: [fluxinstances, fluxreports]
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: headlamp-viewer
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: headlamp-viewer
+subjects:
+  - kind: ServiceAccount
+    name: headlamp-viewer
+    namespace: headlamp
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: headlamp
+  annotations:
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/name: Headlamp
+    gethomepage.dev/description: Cluster map
+    gethomepage.dev/group: Cluster
+    gethomepage.dev/icon: headlamp.png
+    gethomepage.dev/app: headlamp
+spec:
+  parentRefs:
+    - name: homelab
+      namespace: traefik
+  hostnames:
+    - headlamp.home.arpa
+  rules:
+    - backendRefs:
+        - name: headlamp
+          port: 80

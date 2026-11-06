@@ -1,0 +1,182 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: OCIRepository
+metadata:
+  name: kube-prometheus-stack
+  namespace: monitoring
+spec:
+  interval: 1h
+  url: oci://ghcr.io/prometheus-community/charts/kube-prometheus-stack
+  layerSelector:
+    mediaType: application/vnd.cncf.helm.chart.content.v1.tar+gzip
+    operation: copy
+  ref:
+    tag: 92.17.1
+    digest: sha256:0b5cdaf8dfd4dbfb8b857a025aead52fbd9b17d6fc95822f91792603ca30be9c
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: kube-prometheus-stack
+  namespace: monitoring
+spec:
+  interval: 1h
+  timeout: 10m
+  chartRef:
+    kind: OCIRepository
+    name: kube-prometheus-stack
+  # The monitoring.coreos.com CRDs ship in the crds subchart's crds/ dir, which Helm skips on upgrade by default.
+  # RetryOnFailure keeps retrying a failed install or upgrade (e.g. while the Grafana admin secret is missing) instead of stalling.
+  install:
+    crds: CreateReplace
+    strategy:
+      name: RetryOnFailure
+  upgrade:
+    crds: CreateReplace
+    strategy:
+      name: RetryOnFailure
+  values:
+    # k3s runs these inside the k3s process, bound to localhost, and uses SQLite instead of etcd.
+    # Disabling them also drops their ServiceMonitors, alert rules and dashboards.
+    kubeControllerManager:
+      enabled: false
+    kubeScheduler:
+      enabled: false
+    kubeProxy:
+      enabled: false
+    kubeEtcd:
+      enabled: false
+
+    defaultRules:
+      # local-path PVCs have no quota, so kubelet reports the whole root filesystem for every PVC.
+      # NodeDiskUsageHigh and the node-exporter filesystem alerts cover that disk once.
+      disabled:
+        KubePersistentVolumeFillingUp: true
+        KubePersistentVolumeInodesFillingUp: true
+
+    alertmanager:
+      # Replaces the chart's default config. Lists replace the chart's lists, so inhibit_rules repeats its defaults.
+      config:
+        route:
+          receiver: discord
+          group_by: [alertname, job, instance]
+          group_wait: 30s
+          group_interval: 5m
+          repeat_interval: 12h
+          routes:
+            # Always firing, to show the alert pipeline works.
+            - receiver: "null"
+              matchers: [alertname = "Watchdog"]
+        inhibit_rules:
+          - source_matchers: [severity = critical]
+            target_matchers: [severity =~ warning|info]
+            equal: [namespace, alertname]
+          - source_matchers: [severity = warning]
+            target_matchers: [severity = info]
+            equal: [namespace, alertname]
+          # Info alerts only go out alongside a warning or critical alert in the same namespace.
+          - source_matchers: [alertname = InfoInhibitor]
+            target_matchers: [severity = info]
+            equal: [namespace]
+          - target_matchers: [alertname = InfoInhibitor]
+          # The cluster UIs are probed by home.arpa name, so they fail along with Pi-hole.
+          - source_matchers: [alertname = PiholeDown]
+            target_matchers: [alertname = ProbeFailed, job =~ "dns-.*|http-cluster"]
+          - source_matchers: [alertname = NodeFilesystemAlmostOutOfSpace]
+            target_matchers: [alertname = NodeDiskUsageHigh]
+            equal: [mountpoint]
+          - source_matchers: [alertname = BlackboxExporterDown]
+            target_matchers: [alertname = TargetDown, job =~ "icmp|http-.*|dns-.*"]
+        receivers:
+          - name: "null"
+          - name: discord
+            discord_configs:
+              - webhook_url_file: /etc/alertmanager/secrets/alertmanager-discord/webhook-url
+                send_resolved: true
+                title: '[{{ .Status | toUpper }}] {{ .CommonLabels.alertname }}'
+                message: |-
+                  {{ range .Alerts }}{{ if eq .Status "resolved" }}Resolved: {{ end }}**{{ or .Annotations.summary .Labels.alertname }}**
+                  {{ .Annotations.description }}
+                  {{ end }}
+      alertmanagerSpec:
+        # Mounted at /etc/alertmanager/secrets/<name>/<key>.
+        secrets: [alertmanager-discord]
+        resources:
+          requests:
+            cpu: 10m
+            memory: 32Mi
+
+    prometheus:
+      prometheusSpec:
+        # Select every ServiceMonitor, PodMonitor, Probe, ScrapeConfig and PrometheusRule in the cluster, not only the
+        # ones labelled with this release.
+        serviceMonitorSelectorNilUsesHelmValues: false
+        podMonitorSelectorNilUsesHelmValues: false
+        probeSelectorNilUsesHelmValues: false
+        scrapeConfigSelectorNilUsesHelmValues: false
+        ruleSelectorNilUsesHelmValues: false
+        retention: 30d
+        retentionSize: 18GB
+        storageSpec:
+          volumeClaimTemplate:
+            spec:
+              storageClassName: local-path
+              accessModes: [ReadWriteOnce]
+              resources:
+                requests:
+                  storage: 20Gi
+        resources:
+          requests:
+            cpu: 200m
+            memory: 768Mi
+          limits:
+            memory: 2Gi
+
+    prometheusOperator:
+      resources:
+        requests:
+          cpu: 20m
+          memory: 64Mi
+
+    kube-state-metrics:
+      resources:
+        requests:
+          cpu: 10m
+          memory: 64Mi
+
+    prometheus-node-exporter:
+      # The host's / is mounted at /host/root. bootstrap's apt-metrics timer writes the .prom files.
+      extraArgs:
+        - --collector.textfile.directory=/host/root/var/lib/prometheus/node-exporter
+      resources:
+        requests:
+          cpu: 10m
+          memory: 32Mi
+
+    grafana:
+      defaultDashboardsTimezone: browser
+      admin:
+        existingSecret: grafana-admin
+      # The PVC is ReadWriteOnce, so the old pod has to stop before the new one starts.
+      deploymentStrategy:
+        type: Recreate
+      persistence:
+        enabled: true
+        storageClassName: local-path
+        size: 1Gi
+      grafana.ini:
+        server:
+          root_url: http://grafana.home.arpa
+      resources:
+        requests:
+          cpu: 50m
+          memory: 192Mi
+      sidecar:
+        resources:
+          requests:
+            cpu: 10m
+            memory: 64Mi

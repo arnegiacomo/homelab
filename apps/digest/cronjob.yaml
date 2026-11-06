@@ -1,0 +1,68 @@
+# What every digest CronJob shares. kustomization.yaml merges it into each CronJob in digests.yaml, so the name is
+# unused. Each CronJob names its container digest, which is how the container and its env lists merge.
+# A failed run fails the Job without retrying, and the chart's KubeJobFailed alert fires. The Job is deleted
+# 6 hours after it finishes, which resolves the alert.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: digest
+spec:
+  timeZone: Europe/Oslo
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: 900
+      ttlSecondsAfterFinished: 21600
+      template:
+        spec:
+          serviceAccountName: digest
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: digest
+              image: oven/bun:1.4.4-alpine@sha256:4cf82f5686b196504fe119db3fcd9185b191f82ece82c40680e597228ec6070a
+              env:
+                - name: OLLAMA_URL
+                  value: http://llm.home.arpa:11434
+                - name: OLLAMA_MODEL
+                  value: gemma4:26b-a4b-it-qat
+                - name: NODE_EXTRA_CA_CERTS
+                  value: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+                - name: HOME
+                  value: /tmp
+                - name: GITHUB_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: digest
+                      key: github-token
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: [ALL]
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 64Mi
+                limits:
+                  memory: 256Mi
+              volumeMounts:
+                - name: code
+                  mountPath: /app
+                  readOnly: true
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: code
+              configMap:
+                name: digest-code
+            - name: tmp
+              emptyDir:
+                medium: Memory
+                sizeLimit: 16Mi

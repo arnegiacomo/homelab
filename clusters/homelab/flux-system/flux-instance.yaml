@@ -1,0 +1,19 @@
+# Bootstrap applies this once. After that Flux manages it from here.
+apiVersion: fluxcd.controlplane.io/v1
+kind: FluxInstance
+metadata:
+  name: flux
+  namespace: flux-system
+spec:
+  distribution:
+    # renovate: datasource=github-releases depName=fluxcd/flux2 extractVersion=^v(?<version>.+)$
+    version: "2.10.0"
+    registry: ghcr.io/fluxcd
+  cluster:
+    type: kubernetes
+    size: small
+  sync:
+    kind: GitRepository
+    url: https://github.com/arnegiacomo/homelab.git
+    ref: refs/heads/main
+    path: clusters/homelab

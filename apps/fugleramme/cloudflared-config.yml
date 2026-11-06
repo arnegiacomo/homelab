@@ -1,0 +1,17 @@
+# The fugleramme tunnel. Only the frame image, the state, and the icons and manifest the page links are public; everything else is 404.
+# It also carries status.arnegiacomo.dev, through Traefik to the status app (apps/status).
+tunnel: 82445f89-cf30-4552-9f77-6796dd79f13d
+credentials-file: /etc/cloudflared/credentials/credentials.json
+metrics: 0.0.0.0:2000
+no-autoupdate: true
+
+ingress:
+  - hostname: fugleramme.arnegiacomo.dev
+    path: '^/(collage\.png|paper\.png|state|favicon\.png|apple-touch-icon\.png|icon-512\.png|manifest\.webmanifest)?(\?.*)?$'
+    service: http://fugleramme:8080
+  - hostname: fugleramme-bergen.arnegiacomo.dev
+    path: '^/(collage\.png|paper\.png|state|favicon\.png|apple-touch-icon\.png|icon-512\.png|manifest\.webmanifest)?(\?.*)?$'
+    service: http://fugleramme-bergen:8080
+  - hostname: status.arnegiacomo.dev
+    service: http://traefik.traefik.svc.cluster.local:80
+  - service: http_status:404

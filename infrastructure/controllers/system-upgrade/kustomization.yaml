@@ -1,0 +1,11 @@
+# Rancher's system-upgrade-controller, from its release manifests. The repo's own kustomization.yaml pins a stale
+# image tag, so the release assets are the source. Bump both URLs and the image together (Renovate does).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - https://github.com/rancher/system-upgrade-controller/releases/download/v0.20.2/crd.yaml
+  - https://github.com/rancher/system-upgrade-controller/releases/download/v0.20.2/system-upgrade-controller.yaml
+# Pins the release manifest's image by digest.
+images:
+  - name: rancher/system-upgrade-controller
+    newTag: v0.20.2@sha256:61b68d4372baf7ae90fb0f879feea1c082381a8b7547cc5ec85d393c497b11cb

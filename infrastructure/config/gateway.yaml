@@ -1,0 +1,15 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: homelab
+  namespace: traefik
+spec:
+  gatewayClassName: traefik
+  listeners:
+    # Traefik matches listeners to its entrypoints by container port. 8000 is the `web` entrypoint, exposed on :80.
+    - name: web
+      protocol: HTTP
+      port: 8000
+      allowedRoutes:
+        namespaces:
+          from: All

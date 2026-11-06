@@ -1,0 +1,78 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: grafana
+  namespace: monitoring
+spec:
+  interval: 1h
+  # The Alloy chart has no OCI artifact.
+  url: https://grafana.github.io/helm-charts
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: alloy
+  namespace: monitoring
+spec:
+  interval: 1h
+  timeout: 10m
+  chart:
+    spec:
+      chart: alloy
+      version: 1.15.0
+      sourceRef:
+        kind: HelmRepository
+        name: grafana
+  values:
+    # The PodLogs CRD isn't used.
+    crds:
+      create: false
+    # Alloy only discovers pods, so it needs to read pods instead of the chart's default of every service discovery
+    # source plus ConfigMaps and Secrets. The chart's read-only node rules stay.
+    rbac:
+      rules:
+        - apiGroups: [""]
+          resources: [pods]
+          verbs: [get, list, watch]
+    alloy:
+      configMap:
+        create: false
+        name: alloy-config
+        key: config.alloy
+      # On the host, so read positions survive pod restarts and nothing is shipped twice. Not under the image's
+      # /var/lib/alloy, which belongs to uid 473 and isn't traversable for root without capabilities.
+      storagePath: /host/var/lib/alloy
+      enableReporting: false
+      # Root without capabilities: owner access to the root-owned pod logs, journal files and positions dir on the
+      # host, nothing more.
+      securityContext:
+        runAsUser: 0
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop: [ALL]
+        seccompProfile:
+          type: RuntimeDefault
+      mounts:
+        # The host's /var/log, read-only: pod logs in /var/log/pods and the persistent journal in /var/log/journal
+        # (/run/log/journal is empty).
+        varlog: true
+        extra:
+          - name: data
+            mountPath: /host/var/lib/alloy
+      resources:
+        requests:
+          cpu: 50m
+          memory: 128Mi
+        limits:
+          memory: 512Mi
+    controller:
+      type: daemonset
+      volumes:
+        extra:
+          - name: data
+            hostPath:
+              path: /var/lib/alloy
+              type: DirectoryOrCreate
+    serviceMonitor:
+      enabled: true
