@@ -40,3 +40,7 @@ ensure llm-admin op item create --vault "$VAULT" --category login --title llm-ad
   --generate-password=letters,digits,24 username=llm
 ensure restic-password op item create --vault "$VAULT" --category password --title restic-password \
   --generate-password=letters,digits,32
+ensure kaneo-postgres op item create --vault "$VAULT" --category password --title kaneo-postgres \
+  --generate-password=letters,digits,32
+ensure kaneo-auth-secret op item create --vault "$VAULT" --category password --title kaneo-auth-secret \
+  --generate-password=letters,digits,64

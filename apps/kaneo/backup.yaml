@@ -1,0 +1,54 @@
+# Dumps the database to the PVC kaneo-dump before the nightly restic backup at 03:00, which then picks it up.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: kaneo-dump
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: kaneo-dump
+spec:
+  schedule: "30 2 * * *"
+  timeZone: Europe/Oslo
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      ttlSecondsAfterFinished: 21600
+      template:
+        spec:
+          automountServiceAccountToken: false
+          enableServiceLinks: false
+          restartPolicy: OnFailure
+          containers:
+            - name: dump
+              image: postgres:16-alpine@sha256:aa6cb33cf4c19c765cefcf48d96176258800870a9a1e930ad126200f9d825139
+              command:
+                - sh
+                - -c
+                - pg_dump -h postgres -U kaneo -d kaneo -Fc -f /dump/kaneo.dump.tmp && mv /dump/kaneo.dump.tmp /dump/kaneo.dump
+              env:
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: kaneo
+                      key: postgres-password
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  memory: 128Mi
+              volumeMounts:
+                - name: dump
+                  mountPath: /dump
+          volumes:
+            - name: dump
+              persistentVolumeClaim:
+                claimName: kaneo-dump

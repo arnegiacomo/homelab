@@ -52,6 +52,14 @@ kubectl --context homelab -n digest create job --from=cronjob/home-digest home-d
 kubectl --context homelab -n digest logs -f job/home-digest-manual
 ```
 
+## Kaneo
+
+The issue tracker at `kaneo.home.arpa` (`apps/kaneo`), with its own Postgres. Registration is off: new users are invited from a workspace.
+
+- Agents use its MCP endpoint, `http://kaneo.home.arpa/api/mcp`.
+- The database password and session key come from the 1Password items `kaneo-postgres` and `kaneo-auth-secret`.
+- The CronJob `kaneo-dump` writes `kaneo.dump` to the PVC `kaneo-dump` at 02:30, and the nightly restic backup picks it up. Restoring it is in [backups](backups.md#restore-kaneo).
+
 ## Headlamp
 
 A read-only cluster map with the Flux plugin, at `headlamp.home.arpa`. You log in with a token for the ServiceAccount `headlamp-viewer`, which can read everything except Secrets and write nothing.

@@ -90,6 +90,7 @@ spec:
                 192.168.142.2 pihole.home.arpa
                 192.168.142.2 flux.home.arpa
                 192.168.142.2 headlamp.home.arpa
+                192.168.142.2 kaneo.home.arpa
                 192.168.142.2 fugleramme-pi5.home.arpa
                 192.168.142.2 fugleramme-bergen.home.arpa
                 192.168.142.3 homeassistant.home.arpa

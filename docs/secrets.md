@@ -16,7 +16,7 @@ What expires is in [owner tasks](owner-tasks.md#things-that-expire).
 
 ## Cluster secrets
 
-`scripts/op-items.sh` creates `pihole-admin` and `grafana-admin` with generated passwords. The rest are created by hand.
+`scripts/op-items.sh` creates `pihole-admin`, `grafana-admin`, `kaneo-postgres` and `kaneo-auth-secret` with generated values. The rest are created by hand.
 
 | Item | Fields | What |
 |---|---|---|
@@ -27,6 +27,8 @@ What expires is in [owner tasks](owner-tasks.md#things-that-expire).
 | `discord-*-webhook` | `credential` | Discord webhooks, see [Discord](discord.md) |
 | `github-digest-token` | `credential` | GitHub token for the [digests](apps.md#digests), read-only on `homelab` and `fugleramme` |
 | `headlamp-token` | `credential` | Headlamp login, see [Headlamp](apps.md#the-login-token) |
+| `kaneo-postgres` | `password` | Kaneo database password |
+| `kaneo-auth-secret` | `password` | Kaneo session signing key |
 
 ## Model server and frames
 

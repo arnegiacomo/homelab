@@ -24,6 +24,7 @@ The `home.arpa` names work at home and over Tailscale.
 | http://pihole.home.arpa/admin/ | Pi-hole |
 | http://flux.home.arpa | Flux web UI |
 | http://headlamp.home.arpa | Headlamp, read-only cluster map |
+| http://kaneo.home.arpa | Kaneo, the issue tracker |
 | http://homeassistant.home.arpa:8123 | Home Assistant |
 | http://fugleramme-pi5.home.arpa/admin, http://fugleramme-bergen.home.arpa/admin | fugleramme admin |
 | https://fugleramme.arnegiacomo.dev, https://fugleramme-bergen.arnegiacomo.dev | fugleramme, public |

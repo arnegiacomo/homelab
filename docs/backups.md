@@ -52,6 +52,22 @@ Each PVC is a directory named `pvc-<uid>_<namespace>_<pvc>`. The example restore
    kubectl --context homelab -n fugleramme scale deploy/fugleramme-bergen --replicas 1
    ```
 
+## Restore Kaneo
+
+Kaneo's backup is the nightly `pg_dump` in the PVC `kaneo-dump`, not its live database directory.
+
+1. Restore the `kaneo-dump` PVC like any other, see above.
+2. Load the dump into the running database:
+
+   ```sh
+   kubectl --context homelab -n kaneo scale deploy/kaneo --replicas 0
+   kubectl --context homelab -n kaneo create job kaneo-restore --from=cronjob/kaneo-dump --dry-run=client -o json |
+     jq '.spec.template.spec.containers[0].command = ["pg_restore", "-h", "postgres", "-U", "kaneo", "-d", "kaneo", "--clean", "--if-exists", "/dump/kaneo.dump"]' |
+     kubectl --context homelab apply -f -
+   kubectl --context homelab -n kaneo wait job/kaneo-restore --for=condition=complete
+   kubectl --context homelab -n kaneo scale deploy/kaneo --replicas 1
+   ```
+
 ## A new disk
 
 Format it on `homelab`, then run bootstrap:

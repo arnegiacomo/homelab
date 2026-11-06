@@ -1,0 +1,106 @@
+# Kaneo, the issue tracker at kaneo.home.arpa. Its MCP endpoint is /api/mcp.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kaneo
+spec:
+  selector:
+    matchLabels:
+      app: kaneo
+  template:
+    metadata:
+      labels:
+        app: kaneo
+    spec:
+      automountServiceAccountToken: false
+      # Otherwise the postgres Service injects POSTGRES_PORT=tcp://..., which Kaneo reads as the port.
+      enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: kaneo
+          image: ghcr.io/usekaneo/kaneo:2.49.0@sha256:cd1826b1aba3ce736015cadf6f6c975d923aac00f4b6aaa7aedb29bc722dae49
+          env:
+            - name: KANEO_CLIENT_URL
+              value: http://kaneo.home.arpa
+            - name: POSTGRES_HOST
+              value: postgres
+            - name: POSTGRES_DB
+              value: kaneo
+            - name: POSTGRES_USER
+              value: kaneo
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: kaneo
+                  key: postgres-password
+            - name: AUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: kaneo
+                  key: auth-secret
+            # The owner's account exists. New users can only be invited.
+            - name: DISABLE_REGISTRATION
+              value: "true"
+          ports:
+            - name: http
+              containerPort: 5173
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 20m
+              memory: 192Mi
+            limits:
+              memory: 768Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kaneo
+spec:
+  selector:
+    app: kaneo
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: kaneo
+  annotations:
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/name: Kaneo
+    gethomepage.dev/description: Issues
+    gethomepage.dev/group: Cluster
+    gethomepage.dev/icon: mdi-checkbox-marked-outline
+    gethomepage.dev/pod-selector: app=kaneo
+spec:
+  parentRefs:
+    - name: homelab
+      namespace: traefik
+  hostnames:
+    - kaneo.home.arpa
+  rules:
+    - backendRefs:
+        - name: kaneo
+          port: 80

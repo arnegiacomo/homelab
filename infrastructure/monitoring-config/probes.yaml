@@ -118,6 +118,7 @@ spec:
         - http://pihole.home.arpa
         - http://home.home.arpa
         - http://headlamp.home.arpa
+        - http://kaneo.home.arpa/api/health
 ---
 # The public fugleramme instances and the status endpoint through the Cloudflare tunnel. Also exports the cert expiry.
 apiVersion: monitoring.coreos.com/v1

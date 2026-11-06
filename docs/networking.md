@@ -12,7 +12,7 @@ The LAN is `192.168.142.0/24`. The hosts are in the [README](../README.md#hosts)
 
 Every local name is `<name>.home.arpa`, answered by Pi-hole (see [DNS](dns.md)).
 
-- Cluster UIs, all on `192.168.142.2`: `home`, `grafana`, `pihole`, `flux`, `headlamp`, `fugleramme-pi5`, `fugleramme-bergen`
+- Cluster UIs, all on `192.168.142.2`: `home`, `grafana`, `pihole`, `flux`, `headlamp`, `kaneo`, `fugleramme-pi5`, `fugleramme-bergen`
 - Devices: `homelab`, `homeassistant`, `llm`, `fugleramme`, `fugleramme-kjokken`
 
 Traefik serves the cluster UIs over plain HTTP.
