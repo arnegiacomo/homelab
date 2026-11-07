@@ -1,16 +1,19 @@
 # Homelab
 
-GitOps repo for the single-node k3s cluster on the `homelab` host. Flux syncs `main`. The PRD is issue #1 (`gh issue view 1`); it is the source of truth for decisions.
+GitOps repo for the single-node k3s cluster on the `homelab` host. Flux syncs `main`.
+
+Issues live in Kaneo (`kaneo.home.arpa`), project `Homelab`, with IDs like `HOM-12`. Agents use the `kaneo` MCP server (`docs/apps.md#kaneo`). The PRD is `HOM-5`; it is the source of truth for decisions. Kaneo is private, so personal details can go there.
 
 ## Workflow
 
-- Commit straight to `main`. Conventional commits with the issue ref, subject line only: `feat: #12 add blackbox probes`.
+- Commit straight to `main`. Conventional commits with the Kaneo ID, subject line only: `feat: HOM-12 add blackbox probes`.
+- Move the task to `in-progress` when you start and to `done` once it's verified live.
 - Run `scripts/validate.sh` before every push. It must exit 0.
 - After pushing, wait for the Flux Kustomizations to be Ready, then verify the issue's acceptance criteria on the live cluster. A green `validate.sh` alone is not done.
 
 ## Public repo
 
-- Treat the repo as public, issues, comments and commits included. Write for strangers: the design, the config, what happened. Personal details go to the owner in chat: addresses and place names, family, the ISP and anything outside the LAN, device identifiers such as MACs, and which logins exist or are missing.
+- Treat the repo as public, commits included. Write for strangers: the design, the config, what happened. Personal details go in Kaneo or to the owner in chat: addresses and place names, family, the ISP and anything outside the LAN, device identifiers such as MACs, and which logins exist or are missing.
 
 ## Docs
 
@@ -31,7 +34,7 @@ Any disruptive live-host step:
 
 ## Boundaries
 
-- Homelab code and issues live in this repo only, never in the `fugleramme` repo.
+- Homelab code lives in this repo and its issues in Kaneo, never in the `fugleramme` repo.
 - The fugleramme devices (`fugleramme`, `fugleramme-kjokken`) are probe targets only: ICMP and HTTP. Never install anything on them.
 - Remote frames (`docs/frames.md`) are set up only through `frames/run.sh`. Running it against a live frame is a hand-back step, since it can reboot it.
 

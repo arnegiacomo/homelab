@@ -56,7 +56,13 @@ kubectl --context homelab -n digest logs -f job/home-digest-manual
 
 The issue tracker at `kaneo.home.arpa` (`apps/kaneo`), with its own Postgres. Registration is off: new users are invited from a workspace.
 
-- Agents use its MCP endpoint, `http://kaneo.home.arpa/api/mcp`.
+- Agents use the official `@kaneo/mcp` stdio package with a device login, approved once in Kaneo:
+
+  ```sh
+  claude mcp add --scope user kaneo -e KANEO_API_URL=http://kaneo.home.arpa -- npx -y @kaneo/mcp@0.1.14
+  ```
+
+  The built-in `/api/mcp` endpoint logs in with OAuth, which Claude Code only does over HTTPS.
 - The database password and session key come from the 1Password items `kaneo-postgres` and `kaneo-auth-secret`.
 - The CronJob `kaneo-dump` writes `kaneo.dump` to the PVC `kaneo-dump` at 02:30, and the nightly restic backup picks it up. Restoring it is in [backups](backups.md#restore-kaneo).
 
