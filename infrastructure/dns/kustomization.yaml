@@ -11,7 +11,9 @@ configMapGenerator:
     namespace: dns
     files:
       - adlists.list
+  # The hash suffix also rolls the pod when the allowlist changes.
   - name: pihole-start
     namespace: dns
     files:
       - pihole-start.sh
+      - allowlist.list

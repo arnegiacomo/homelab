@@ -1,0 +1,3 @@
+# Pi-hole allowlist, one exact domain per line. Applied when the pod starts; see docs/dns.md.
+# Shopify Collabs: collabs.shopify.com is a CNAME to this, and HaGeZi Pro blocks all of dovetale.com.
+shopify.dovetale.com

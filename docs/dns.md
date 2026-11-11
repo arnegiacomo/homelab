@@ -6,6 +6,7 @@ Pi-hole and unbound run in the `dns` namespace (`infrastructure/dns`). Pi-hole a
 - Local records: `FTLCONF_dns_hosts` in `infrastructure/dns/pihole.yaml`, one `<ip> <name>.home.arpa` per line.
 - Other settings: `FTLCONF_*` env in the same file.
 - Blocklists: `infrastructure/dns/adlists.list`, one URL per line.
+- Allowlist: `infrastructure/dns/allowlist.list`, one exact domain per line. Pi-hole also blocks a domain whose CNAME target is on a blocklist, so `pihole -q <domain>` can find no match for a blocked name. Find the blocked target in the query log (or with `dig <domain> @1.1.1.1`) and allow that.
 - Pods resolve `home.arpa` through CoreDNS, which forwards it to Pi-hole (ConfigMap `coredns-custom` in `kube-system`).
 - The host itself uses `1.1.1.1` and `1.0.0.1`.
 

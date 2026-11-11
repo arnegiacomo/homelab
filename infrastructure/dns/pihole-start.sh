@@ -1,22 +1,28 @@
 #!/bin/bash
 # Pi-hole's entrypoint. /etc/pihole persists on the PVC, so before the image's start.sh runs, this resets what the UI
-# can change there to git: settings to the FTLCONF_* env, and gravity.db to the lists in adlists.list with no groups,
-# clients, or allow and deny entries. Gravity runs in the background only when that changed the lists, so a plain
+# can change there to git: settings to the FTLCONF_* env, and gravity.db to the lists in adlists.list and the allow
+# entries in allowlist.list, with no groups, clients, or other allow and deny entries. Gravity runs in the background only when that changed the lists, so a plain
 # restart keeps blocking with the last good database. See docs/dns.md.
 set -euo pipefail
 
 db=/etc/pihole/gravity.db
 adlists=/etc/pihole/adlists.list
+allowlist=/homelab/allowlist.list
 
 # FTL writes it fresh from the env and the defaults. A kept file would keep the settings changed in the UI.
 rm -f /etc/pihole/pihole.toml
 
-# The image creates the database from adlists.list itself on the first start.
+# The image creates the database from adlists.list itself on the first start. allowlist.list applies from the next start.
 if [[ ! -f $db ]]; then
   exec /usr/bin/start.sh
 fi
 
-repo=$(grep -v '^[[:space:]]*#' "$adlists" | sed 's/[[:space:]]//g' | grep . | sed "s/'/''/g; s/.*/INSERT OR IGNORE INTO repo VALUES ('&');/" || true)
+# Prints one INSERT per entry of a list file into the given table, skipping comments and blank lines.
+inserts() {
+  grep -v '^[[:space:]]*#' "$1" | sed 's/[[:space:]]//g' | grep . | sed "s/'/''/g; s/.*/INSERT OR IGNORE INTO $2 VALUES ('&');/" || true
+}
+repo=$(inserts "$adlists" repo)
+allow=$(inserts "$allowlist" allow)
 
 # Removed lists stop blocking right away: vw_gravity, which FTL reads, only joins enabled lists that exist.
 # Prints what needs a gravity run: lists gravity has never processed, and domains of removed lists. Both stay until a
@@ -29,8 +35,12 @@ if ! changed=$(pihole-FTL sqlite3 -ni "$db" <<SQL
 PRAGMA foreign_keys = OFF;
 CREATE TEMP TABLE repo (address TEXT PRIMARY KEY);
 $repo
+CREATE TEMP TABLE allow (domain TEXT PRIMARY KEY);
+$allow
 BEGIN;
 DELETE FROM domainlist;
+-- Type 0 is an exact allow entry. A trigger adds it to the default group.
+INSERT INTO domainlist (type, domain, comment) SELECT 0, domain, 'allowlist.list' FROM allow;
 DELETE FROM client;
 DELETE FROM adlist_by_group WHERE group_id != 0;
 DELETE FROM "group" WHERE id != 0;
