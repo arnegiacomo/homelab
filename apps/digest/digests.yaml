@@ -154,7 +154,7 @@ spec:
             # all time is fine, since the proxy only serves the day. Landscape 1440p without names, a few MB, well under
             # Discord's 10 MB.
             - name: render
-              image: ghcr.io/arnegiacomo/fugleramme:0.31.1@sha256:21685a84225e2e78c44af601577118f09ed7f4f3752ffaa5bad44016d3243801
+              image: ghcr.io/arnegiacomo/fugleramme:0.32.0@sha256:72e342c493dffe8b18088debabe9df72a72f8ace5f87dfd6e65c14962f4358b7
               command:
                 - fugleramme-frame
                 - --config
