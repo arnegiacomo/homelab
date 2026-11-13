@@ -6,7 +6,11 @@ A remote frame is a Raspberry Pi with fugleramme, BirdNET-Go and a mic at someon
 |---|---|---|
 | `tromso` | `fugleramme-tromso-pi` | `fugleramme-tromso.arnegiacomo.dev` |
 
-`frames/run.sh` sets up the Pi. The cluster side (instance, tunnel rule, DNS record, Homepage tile) is added by hand per frame.
+`frames/run.sh` sets up the Pi. The cluster side is added by hand per frame:
+
+- a Pi-hole record `fugleramme-<name>.home.arpa` pointing at the Pi's Tailscale IP, in `infrastructure/dns/pihole.yaml`. Homepage reaches it through `homelab`
+- a nested group with a Kiosk and a BirdNET-Go tile under `Frames` in `apps/homepage/config/services.yaml`, and its name under `Frames` in `settings.yaml`
+- a fugleramme instance, tunnel rule and public DNS record (`apps.md#fugleramme`)
 
 ## Once per tailnet
 

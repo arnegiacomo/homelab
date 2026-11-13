@@ -97,6 +97,7 @@ spec:
                 192.168.142.4 llm.home.arpa
                 192.168.142.5 fugleramme.home.arpa
                 192.168.142.6 fugleramme-kjokken.home.arpa
+                100.90.99.19 fugleramme-tromso.home.arpa
           ports:
             - name: web
               containerPort: 8053

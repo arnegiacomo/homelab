@@ -103,59 +103,97 @@
         href: http://192.168.142.1
         ping: 192.168.142.1
 
-# The admin UI tiles come from the HTTPRoutes (weight 0, so first, by name). The public ones follow in the same order.
-- fugleramme:
-    - fugleramme-bergen public:
-        icon: cloudflare.png
-        description: fugleramme-bergen.arnegiacomo.dev
-        href: https://fugleramme-bergen.arnegiacomo.dev
-        siteMonitor: https://fugleramme-bergen.arnegiacomo.dev/state
-    - fugleramme-pi5 public:
-        icon: cloudflare.png
-        description: fugleramme.arnegiacomo.dev
-        href: https://fugleramme.arnegiacomo.dev
-        siteMonitor: https://fugleramme.arnegiacomo.dev/state
-
+# One sub-group per frame, with a Kiosk and a BirdNET-Go tile. The cluster instances have no tiles; the http-public probe
+# watches them. fugleramme-tromso is reached over Tailscale through homelab.
+# birdnet-go sends a body on HEAD, on every path, which siteMonitor's HEAD request fails on. So its tiles have no status
+# dot, and the Status field from its health API stands in for one. It also reports the device's own CPU, memory and disk.
 - Frames:
     - fugleramme:
-        icon: mdi-image-frame
-        description: Frame app
-        href: http://fugleramme.home.arpa:8080
-        siteMonitor: http://fugleramme.home.arpa:8080/health
-    # birdnet-go sends a body on HEAD, on every path, which siteMonitor's HEAD request fails on. So these tiles have no
-    # status dot, and the Status field from its health API stands in for one.
-    # It also reports the device's own CPU, memory and disk.
-    - fugleramme birdnet-go:
-        icon: birdnet.png
-        description: Bird song detection
-        href: http://fugleramme.home.arpa:8090
-        widget:
-          type: customapi
-          url: http://fugleramme.home.arpa:8090/api/v2/health
-          refreshInterval: 30000
-          mappings: &birdnet
-            - field: status
-              label: Status
-            - field: system.cpu_usage
-              label: CPU
-              format: percent
-            - field: system.memory.used_percent
-              label: Memory
-              format: percent
-            - field: system.disk_space.used_percent
-              label: Disk
-              format: percent
+        - Kiosk:
+            icon: mdi-image-frame
+            description: ":8080"
+            weight: 1
+            href: http://fugleramme.home.arpa:8080
+            siteMonitor: http://fugleramme.home.arpa:8080/health
+            # Public is the http-public probe of the frame's public page, through the tunnel: up, down, or - when there is
+            # none. Every Kiosk tile has the field so the tiles line up. The query is URL-encoded: Homepage drops a raw
+            # {...} selector. This frame has no public page, so its query matches nothing.
+            widget:
+              type: customapi
+              url: http://kube-prometheus-stack-prometheus.monitoring:9090/api/v1/query?query=probe_success%7Binstance%3D%22none%22%7D
+              refreshInterval: 30000
+              mappings: &public
+                - field: data.result.0.value.1
+                  label: Public
+                  remap:
+                    - value: "1"
+                      to: up
+                    - value: "0"
+                      to: down
+        - BirdNET-Go:
+            icon: birdnet.png
+            description: ":8090"
+            weight: 2
+            href: http://fugleramme.home.arpa:8090
+            widget:
+              type: customapi
+              url: http://fugleramme.home.arpa:8090/api/v2/health
+              refreshInterval: 30000
+              mappings: &birdnet
+                - field: status
+                  label: Status
+                - field: system.cpu_usage
+                  label: CPU
+                  format: percent
+                - field: system.memory.used_percent
+                  label: Memory
+                  format: percent
+                - field: system.disk_space.used_percent
+                  label: Disk
+                  format: percent
     - fugleramme-kjokken:
-        icon: mdi-image-frame
-        description: Frame app
-        href: http://fugleramme-kjokken.home.arpa:8080
-        siteMonitor: http://fugleramme-kjokken.home.arpa:8080/health
-    - fugleramme-kjokken birdnet-go:
-        icon: birdnet.png
-        description: Bird song detection
-        href: http://fugleramme-kjokken.home.arpa:8090
-        widget:
-          type: customapi
-          url: http://fugleramme-kjokken.home.arpa:8090/api/v2/health
-          refreshInterval: 30000
-          mappings: *birdnet
+        - Kiosk:
+            icon: mdi-image-frame
+            description: ":8080"
+            weight: 1
+            href: http://fugleramme-kjokken.home.arpa:8080
+            siteMonitor: http://fugleramme-kjokken.home.arpa:8080/health
+            # fugleramme.arnegiacomo.dev shows this frame's birds.
+            widget:
+              type: customapi
+              url: http://kube-prometheus-stack-prometheus.monitoring:9090/api/v1/query?query=probe_success%7Binstance%3D%22https%3A%2F%2Ffugleramme.arnegiacomo.dev%2Fstate%22%7D
+              refreshInterval: 30000
+              mappings: *public
+        - BirdNET-Go:
+            icon: birdnet.png
+            description: ":8090"
+            weight: 2
+            href: http://fugleramme-kjokken.home.arpa:8090
+            widget:
+              type: customapi
+              url: http://fugleramme-kjokken.home.arpa:8090/api/v2/health
+              refreshInterval: 30000
+              mappings: *birdnet
+    - fugleramme-tromso:
+        - Kiosk:
+            icon: mdi-image-frame
+            description: ":8080"
+            weight: 1
+            href: http://fugleramme-tromso.home.arpa:8080
+            siteMonitor: http://fugleramme-tromso.home.arpa:8080/health
+            # Matches nothing until fugleramme-tromso.arnegiacomo.dev is in the http-public probe.
+            widget:
+              type: customapi
+              url: http://kube-prometheus-stack-prometheus.monitoring:9090/api/v1/query?query=probe_success%7Binstance%3D%22https%3A%2F%2Ffugleramme-tromso.arnegiacomo.dev%2Fstate%22%7D
+              refreshInterval: 30000
+              mappings: *public
+        - BirdNET-Go:
+            icon: birdnet.png
+            description: ":8090"
+            weight: 2
+            href: http://fugleramme-tromso.home.arpa:8090
+            widget:
+              type: customapi
+              url: http://fugleramme-tromso.home.arpa:8090/api/v2/health
+              refreshInterval: 30000
+              mappings: *birdnet

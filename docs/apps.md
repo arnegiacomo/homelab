@@ -25,7 +25,9 @@ Two instances of [fugleramme](https://github.com/arnegiacomo/fugleramme) in the 
 The overview at `home.home.arpa`, with its config in `apps/homepage/config`.
 
 - Cluster UIs show up from the `gethomepage.dev/*` annotations on their `HTTPRoute`.
-- Devices off the cluster and the public pages are in `config/services.yaml`. The group order and columns are in `settings.yaml`.
+- Devices off the cluster are in `config/services.yaml`. The group order and columns are in `settings.yaml`.
+- Tile names must be unique within a group, nested groups counting separately. Homepage looks a tile's widget up by group and name, so a duplicate breaks the widget.
+- The `Frames` group has a nested group per frame, named by hostname, with a Kiosk and a BirdNET-Go tile. The cluster instances have no tiles. Each Kiosk tile has a Public field from the `http-public` probe of the frame's public page: up, down, or `-` when there is none.
 - Widget credentials come from the ExternalSecret `homepage` as `HOMEPAGE_VAR_*`.
 
 ## Digests

@@ -20,9 +20,13 @@ layout:
   Cluster:
     style: row
     columns: 4
-  fugleramme:
-    style: row
-    columns: 4
+  # One sub-group per frame, side by side from 1024px, each with its tiles stacked.
   Frames:
     style: row
-    columns: 4
+    columns: 3
+    fugleramme:
+      header: true
+    fugleramme-kjokken:
+      header: true
+    fugleramme-tromso:
+      header: true
