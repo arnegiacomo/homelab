@@ -32,7 +32,7 @@ In `llm/setup.sh`:
 | Setting | Value |
 |---|---|
 | `OLLAMA_MODEL` | `gemma4:26b-a4b-it-qat` |
-| `OLLAMA_CONTEXT_LENGTH` | `16384`, the same as Home Assistant's context window |
+| `OLLAMA_CONTEXT_LENGTH` | `16384`, the same as Home Assistant's context window. The [weekly advice](apps.md#weekly-advice) asks for 32768 in one call a week, which reloads the model |
 | `OLLAMA_KEEP_ALIVE` | `-1`, keep the model loaded |
 | `OLLAMA_NUM_PARALLEL` | `1` |
 | `WHISPER_MODEL` | `small.en` |

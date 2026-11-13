@@ -32,13 +32,14 @@ The overview at `home.home.arpa`, with its config in `apps/homepage/config`.
 
 ## Digests
 
-The `digest` app (`apps/digest`) writes daily summaries with the local model on the [model server](llm.md) and posts them to Discord. Each digest is a CronJob that runs a TypeScript file from `src/` with Bun.
+The `digest` app (`apps/digest`) writes daily summaries and a weekly advice report with the local model on the [model server](llm.md) and posts them to Discord. Each digest is a CronJob that runs a TypeScript file from `src/` with Bun.
 
 | CronJob | When | Channel | Content |
 |---|---|---|---|
 | `home-digest` | 07:00 | `#home` | Yesterday's commits, alerts, outages and peaks, and today's weather |
 | `fugleramme-digest` | 07:05 | `#repos` | What needs a reply and activity for `arnegiacomo/fugleramme` and `fugleramme/clients`, and numbers for the first |
 | `bird-digest` | 07:10 | `#birds` | In Norwegian: yesterday's birds on both frames, newcomers and a bird of the day, with a collage |
+| `fugleramme-advice` | Mondays 02:00 | `#repos` | Advice from every thread in `arnegiacomo/fugleramme` and `fugleramme/clients`, see [below](#weekly-advice) |
 
 - If Ollama or a source is down, the job fails without posting, and `KubeJobFailed` fires.
 - Homepage shows the home and bird digests as tiles, from the ConfigMap `digest-latest`.
@@ -46,6 +47,19 @@ The `digest` app (`apps/digest`) writes daily summaries with the local model on 
 - To add a digest, write `src/<name>.ts`, add it to `digest-code` in `kustomization.yaml`, and add a CronJob to `digests.yaml` with the container named `digest`.
 - To watch another project, copy the `fugleramme-digest` CronJob and give the GitHub token access to the repo. To add a repo to a project's digest, list it in `GITHUB_EXTRA_REPOS`. A public repo needs no extra token access.
 - `DRY_RUN=1` prints instead of posting.
+
+### Weekly advice
+
+`fugleramme-advice` reads every issue, pull request and discussion in both repos, open and closed, with comments and reviews. Only PRs from bots are skipped. It only reads from GitHub.
+
+- The model first summarizes each thread on its own. The summaries are in the PVC `digest-advice`, so a run only reads the threads that changed. The first run reads them all, which takes hours.
+- Then it writes the report from all the summaries at once, with each repo's README, its latest release notes and `apps/digest/src/goals.md`. That call uses a 32k context window, so Ollama reloads the model for it and once more afterwards.
+- The report has up to four sections with at most 5 items each: threads that need the maintainer, patterns across threads, direction, and housekeeping.
+- The code drops an item that cites a thread that doesn't exist, and counts the people and reactions behind each item itself.
+- An item is left out when all its threads were in an earlier report and haven't changed since.
+- The latest report is at `digest.home.arpa/advice.html`. The Discord post has the top items and the link.
+- `goals.md` is for the owner to fill in: goals and non-goals. Without it, direction rests on the threads alone.
+- To start over, delete the files in the PVC. To read one thread again, delete `threads/<repo>-<number>.json`.
 
 To run one now and follow it:
 

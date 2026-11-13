@@ -22,6 +22,8 @@ configMapGenerator:
       - src/output.ts
       - src/home.ts
       - src/repo.ts
+      - src/advice.ts
+      - src/goals.md
       - src/birds.ts
       - src/birdnet.ts
       - src/birdnet-proxy.ts

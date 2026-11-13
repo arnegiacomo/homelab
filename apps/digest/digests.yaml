@@ -103,6 +103,53 @@ spec:
                       name: digest
                       key: discord-repos-webhook
 ---
+# The weekly advice: every thread in the repos, summarized one by one and then read together. The summaries, and what
+# earlier reports brought up, are in the PVC digest-advice, so a run only reads the threads that changed. The first
+# run reads them all, which takes hours, hence the deadline. digest-web serves the report from the PVC.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: digest-advice
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: fugleramme-advice
+spec:
+  schedule: "0 2 * * 1"
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 21600
+      template:
+        spec:
+          containers:
+            - name: digest
+              command: [bun, run, /app/advice.ts]
+              env:
+                - name: GITHUB_REPOS
+                  value: arnegiacomo/fugleramme,fugleramme/clients
+                - name: DATA_DIR
+                  value: /data
+                - name: REPORT_URL
+                  value: http://digest.home.arpa/advice.html
+                - name: DISCORD_WEBHOOK
+                  valueFrom:
+                    secretKeyRef:
+                      name: digest
+                      key: discord-repos-webhook
+              volumeMounts:
+                - name: data
+                  mountPath: /data
+          volumes:
+            - name: data
+              persistentVolumeClaim:
+                claimName: digest-advice
+---
 # The bird digest, in Norwegian, about yesterday at home. Before it runs, fugleramme renders one image of the day's
 # birds from both frames: birdnet-proxy.ts stands in for BirdNET-Go as a sidecar, fugleramme renders once (--preview)
 # into /render, and the digest attaches that file. Nothing keeps running after the Job.

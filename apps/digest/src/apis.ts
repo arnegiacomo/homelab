@@ -26,6 +26,29 @@ export async function chat<T>(system: string, user: string, schema: object): Pro
   return JSON.parse(res.choices[0].message.content) as T;
 }
 
+// chatWithContext is chat with a larger context window, for a prompt that doesn't fit the default. It uses Ollama's
+// own API, since the OpenAI-compatible one can't set the window. Ollama reloads the model for it, and again for the
+// next call at the default size.
+export async function chatWithContext<T>(system: string, user: string, schema: object, contextLength: number): Promise<T> {
+  const res = await fetchJson<{ message: { content: string } }>("Ollama", `${env("OLLAMA_URL")}/api/chat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: env("OLLAMA_MODEL"),
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ],
+      format: schema,
+      think: false,
+      stream: false,
+      options: { num_ctx: contextLength },
+    }),
+    signal: AbortSignal.timeout(3_600_000),
+  });
+  return JSON.parse(res.message.content) as T;
+}
+
 export type Sample = { metric: Record<string, string>; value: [number, string] };
 
 export async function query(promql: string): Promise<Sample[]> {
@@ -46,7 +69,7 @@ export function github<T>(path: string): Promise<T> {
 }
 
 // graphql runs a GitHub GraphQL query, for what REST doesn't have (Discussions).
-export async function graphql<T>(query: string, variables: Record<string, string>): Promise<T> {
+export async function graphql<T>(query: string, variables: Record<string, string | null>): Promise<T> {
   const res = await fetchJson<{ data?: T; errors?: { message: string }[] }>("GitHub GraphQL", "https://api.github.com/graphql", {
     method: "POST",
     headers: { Authorization: `Bearer ${env("GITHUB_TOKEN")}`, "Content-Type": "application/json", "User-Agent": USER_AGENT },
