@@ -37,14 +37,14 @@ The `digest` app (`apps/digest`) writes daily summaries with the local model on 
 | CronJob | When | Channel | Content |
 |---|---|---|---|
 | `home-digest` | 07:00 | `#home` | Yesterday's commits, alerts, outages and peaks, and today's weather |
-| `fugleramme-digest` | 07:05 | `#repos` | What needs a reply, activity and numbers for `arnegiacomo/fugleramme` |
+| `fugleramme-digest` | 07:05 | `#repos` | What needs a reply and activity for `arnegiacomo/fugleramme` and `fugleramme/clients`, and numbers for the first |
 | `bird-digest` | 07:10 | `#birds` | In Norwegian: yesterday's birds on both frames, newcomers and a bird of the day, with a collage |
 
 - If Ollama or a source is down, the job fails without posting, and `KubeJobFailed` fires.
 - Homepage shows the home and bird digests as tiles, from the ConfigMap `digest-latest`.
 - State between runs is in the ConfigMap `digest-state`.
 - To add a digest, write `src/<name>.ts`, add it to `digest-code` in `kustomization.yaml`, and add a CronJob to `digests.yaml` with the container named `digest`.
-- To watch another repo, copy the `fugleramme-digest` CronJob and give the GitHub token access to the repo.
+- To watch another project, copy the `fugleramme-digest` CronJob and give the GitHub token access to the repo. To add a repo to a project's digest, list it in `GITHUB_EXTRA_REPOS`. A public repo needs no extra token access.
 - `DRY_RUN=1` prints instead of posting.
 
 To run one now and follow it:

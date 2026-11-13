@@ -25,7 +25,7 @@ What expires is in [owner tasks](owner-tasks.md#things-that-expire).
 | `fugleramme-tunnel` | `credential` | Cloudflare tunnel credentials JSON |
 | `homeassistant-token` | `credential` | Home Assistant token for Prometheus |
 | `discord-*-webhook` | `credential` | Discord webhooks, see [Discord](discord.md) |
-| `github-digest-token` | `credential` | GitHub token for the [digests](apps.md#digests), read-only on `homelab` and `fugleramme` |
+| `github-digest-token` | `credential` | GitHub token for the [digests](apps.md#digests), read-only on `homelab` and `fugleramme`. Public repos, such as `fugleramme/clients`, are readable without being listed |
 | `headlamp-token` | `credential` | Headlamp login, see [Headlamp](apps.md#the-login-token) |
 | `kaneo-postgres` | `password` | Kaneo database password |
 | `kaneo-auth-secret` | `password` | Kaneo session signing key |

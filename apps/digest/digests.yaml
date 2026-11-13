@@ -89,6 +89,9 @@ spec:
               env:
                 - name: GITHUB_REPO
                   value: arnegiacomo/fugleramme
+                # Their items join the same lists, without numbers of their own.
+                - name: GITHUB_EXTRA_REPOS
+                  value: fugleramme/clients
                 - name: GITHUB_PACKAGE
                   value: fugleramme
                 # Artwork PRs, merged in batches. Grouped into one line.
