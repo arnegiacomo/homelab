@@ -52,7 +52,7 @@ The `digest` app (`apps/digest`) writes daily summaries and a weekly advice repo
 
 `fugleramme-advice` reads every issue, pull request and discussion in both repos, open and closed, with comments and reviews. Only PRs from bots are skipped. It only reads from GitHub.
 
-- The model first summarizes each thread on its own. The summaries are in the PVC `digest-advice`, so a run only reads the threads that changed. The first run reads them all, which takes hours.
+- The model first summarizes each thread on its own. The summaries are in the PVC `digest-advice`, so a run only reads the threads that changed. The first run reads them all, which takes about half an hour.
 - Then it writes the report from all the summaries at once, with each repo's README, its latest release notes and `apps/digest/src/goals.md`. That call uses a 32k context window, so Ollama reloads the model for it and once more afterwards.
 - The report has up to four sections with at most 5 items each: threads that need the maintainer, patterns across threads, direction, and housekeeping.
 - The code drops an item that cites a thread that doesn't exist, and counts the people and reactions behind each item itself.

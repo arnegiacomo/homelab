@@ -13,6 +13,14 @@ patches:
   - path: cronjob.yaml
     target:
       kind: CronJob
+  # After the shared patch, which sets the deadline for every CronJob.
+  - target:
+      kind: CronJob
+      name: fugleramme-advice
+    patch: |-
+      - op: replace
+        path: /spec/jobTemplate/spec/activeDeadlineSeconds
+        value: 3600
 configMapGenerator:
   # The hash suffix makes a code change reach the next run, and an nginx change roll the pod.
   - name: digest-code

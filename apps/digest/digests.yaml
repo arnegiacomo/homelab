@@ -105,7 +105,8 @@ spec:
 ---
 # The weekly advice: every thread in the repos, summarized one by one and then read together. The summaries, and what
 # earlier reports brought up, are in the PVC digest-advice, so a run only reads the threads that changed. The first
-# run reads them all, which takes hours, hence the deadline. digest-web serves the report from the PVC.
+# run reads them all, which takes about half an hour, so kustomization.yaml gives this job a longer deadline.
+# digest-web serves the report from the PVC.
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -124,7 +125,6 @@ spec:
   schedule: "0 2 * * 1"
   jobTemplate:
     spec:
-      activeDeadlineSeconds: 21600
       template:
         spec:
           containers:
