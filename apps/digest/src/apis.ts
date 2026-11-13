@@ -28,9 +28,11 @@ export async function chat<T>(system: string, user: string, schema: object): Pro
 
 // chatWithContext is chat with a larger context window, for a prompt that doesn't fit the default. It uses Ollama's
 // own API, since the OpenAI-compatible one can't set the window. Ollama reloads the model for it, and again for the
-// next call at the default size.
+// next call at the default size. Ollama cuts a prompt that's too long without saying so, so this throws when the
+// prompt and the answer filled the window.
 export async function chatWithContext<T>(system: string, user: string, schema: object, contextLength: number): Promise<T> {
-  const res = await fetchJson<{ message: { content: string } }>("Ollama", `${env("OLLAMA_URL")}/api/chat`, {
+  type Answer = { message: { content: string }; prompt_eval_count: number; eval_count: number };
+  const res = await fetchJson<Answer>("Ollama", `${env("OLLAMA_URL")}/api/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -46,6 +48,8 @@ export async function chatWithContext<T>(system: string, user: string, schema: o
     }),
     signal: AbortSignal.timeout(3_600_000),
   });
+  console.log(`Ollama: ${res.prompt_eval_count} prompt tokens, ${res.eval_count} answer tokens, window ${contextLength}`);
+  if (res.prompt_eval_count + res.eval_count >= contextLength) throw new Error("Ollama: the prompt doesn't fit the context window");
   return JSON.parse(res.message.content) as T;
 }
 
