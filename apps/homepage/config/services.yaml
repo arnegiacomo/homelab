@@ -151,27 +151,15 @@
                 - field: system.disk_space.used_percent
                   label: Disk
                   format: percent
-    - fugleramme-kjokken:
-        - Kiosk:
-            icon: mdi-image-frame
-            description: ":8080"
-            weight: 1
-            href: http://fugleramme-kjokken.home.arpa:8080
-            siteMonitor: http://fugleramme-kjokken.home.arpa:8080/health
-            # fugleramme.arnegiacomo.dev shows this frame's birds.
-            widget:
-              type: customapi
-              url: http://kube-prometheus-stack-prometheus.monitoring:9090/api/v1/query?query=probe_success%7Binstance%3D%22https%3A%2F%2Ffugleramme.arnegiacomo.dev%2Fstate%22%7D
-              refreshInterval: 30000
-              mappings: *public
+    # No frame app, only the detector. fugleramme.arnegiacomo.dev shows its birds.
+    - kitchen:
         - BirdNET-Go:
             icon: birdnet.png
             description: ":8090"
-            weight: 2
-            href: http://fugleramme-kjokken.home.arpa:8090
+            href: http://kitchen.home.arpa:8090
             widget:
               type: customapi
-              url: http://fugleramme-kjokken.home.arpa:8090/api/v2/health
+              url: http://kitchen.home.arpa:8090/api/v2/health
               refreshInterval: 30000
               mappings: *birdnet
     - fugleramme-tromso:

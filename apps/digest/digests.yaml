@@ -172,9 +172,9 @@ spec:
               restartPolicy: Always
               command: [bun, run, /app/birdnet-proxy.ts]
               env:
-                # BirdNET-Go on the two frames at home, by name, since pods can't resolve .local.
+                # BirdNET-Go on the frame and the kitchen Pi at home, by name, since pods can't resolve .local.
                 - name: BIRD_STATIONS
-                  value: &stations kjøkken=http://fugleramme-kjokken.home.arpa:8090,stue=http://fugleramme.home.arpa:8090
+                  value: &stations kjøkken=http://kitchen.home.arpa:8090,stue=http://fugleramme.home.arpa:8090
                 - name: HOME
                   value: /tmp
               startupProbe:

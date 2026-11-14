@@ -11,7 +11,7 @@ A single-node k3s cluster on a Raspberry Pi 5, `homelab`. Flux keeps it in sync 
 | homeassistant | 192.168.142.3 | Home Assistant OS, `:8123` |
 | llm | 192.168.142.4 | MacBook Pro model server, Ollama `:11434` |
 | fugleramme | 192.168.142.5 | Bird frame: app `:8080`, BirdNET-Go `:8090` |
-| fugleramme-kjokken | 192.168.142.6 | Bird frame: app `:8080`, BirdNET-Go `:8090` |
+| kitchen | 192.168.142.6 | Raspberry Pi 4B, BirdNET-Go `:8090` |
 
 ## URLs
 

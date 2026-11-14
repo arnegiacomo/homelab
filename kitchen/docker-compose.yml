@@ -1,0 +1,28 @@
+# BirdNET-Go on the kitchen Pi, in ~/birdnet-go. Setup and updates: docs/kitchen.md.
+services:
+  birdnet-go:
+    # Upstream tags releases by date.
+    image: ghcr.io/tphakala/birdnet-go:20261014
+    container_name: birdnet-go
+    restart: unless-stopped
+    environment:
+      - TZ=Europe/Oslo
+      # The host user, so the entrypoint's chown of /config and /data leaves the bind-mounted files with their owner.
+      - BIRDNET_UID=1000
+      - BIRDNET_GID=1000
+      # The USB mic's ALSA card name, from `arecord -l`. Makes it the default card: the Pi's HDMI cards 0 and 1 have
+      # no capture stream, which breaks BirdNET-Go's enumeration.
+      - ALSA_CARD=Device
+    devices:
+      - /dev/snd:/dev/snd
+    group_add:
+      - audio
+    volumes:
+      - ./config:/config
+      - ./data:/data
+    # Debug logs and HLS segments stay off the SD card.
+    tmpfs:
+      - /data/logs:size=128M,uid=1000,gid=1000,mode=0755
+      - /config/hls:exec,size=50M,uid=1000,gid=1000,mode=0755
+    ports:
+      - "8090:8080"

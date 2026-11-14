@@ -17,7 +17,7 @@ Issues live in Kaneo (`kaneo.home.arpa`), project `Homelab`, with IDs like `HOM-
 
 ## Docs
 
-- `README.md` is the human entry point. Topic docs live in `docs/`, one per area: `bootstrap`, `mac-setup`, `secrets`, `networking`, `dns`, `monitoring`, `apps`, `updates`, `recovery`, `backups`, `discord`, `llm`, `frames`, `homeassistant`. Read an area's doc before changing it, and update the doc in the same commit as the behaviour.
+- `README.md` is the human entry point. Topic docs live in `docs/`, one per area: `bootstrap`, `mac-setup`, `secrets`, `networking`, `dns`, `monitoring`, `apps`, `updates`, `recovery`, `backups`, `discord`, `llm`, `frames`, `kitchen`, `homeassistant`. Read an area's doc before changing it, and update the doc in the same commit as the behaviour.
 - Anything that needs the owner (a manual step, something that expires) goes in `docs/owner-tasks.md`.
 
 ## Hand back to the owner before
@@ -35,7 +35,8 @@ Any disruptive live-host step:
 ## Boundaries
 
 - Homelab code lives in this repo and its issues in Kaneo, never in the `fugleramme` repo.
-- The fugleramme devices (`fugleramme`, `fugleramme-kjokken`) are probe targets only: ICMP and HTTP. Never install anything on them.
+- The fugleramme device (`fugleramme`) is a probe target only: ICMP and HTTP. Never install anything on it.
+- The kitchen Pi (`kitchen`) is set up from `kitchen/` (`docs/kitchen.md`).
 - Remote frames (`docs/frames.md`) are set up only through `frames/run.sh`. Running it against a live frame is a hand-back step, since it can reboot it.
 
 ## Secrets

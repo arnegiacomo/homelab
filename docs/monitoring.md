@@ -22,8 +22,8 @@ The blackbox exporter probes every 30 seconds. The probes are in `infrastructure
 
 | Job | Targets |
 |---|---|
-| `icmp` | router, homeassistant, fugleramme, fugleramme-kjokken |
-| `http-lan` | Home Assistant `:8123`, Ollama `:11434/api/version`, the frames' `:8080/health` and `:8090` |
+| `icmp` | router, homeassistant, fugleramme, kitchen |
+| `http-lan` | Home Assistant `:8123`, Ollama `:11434/api/version`, the frame's `:8080/health`, BirdNET-Go `:8090` on the frame and `kitchen` |
 | `http-cluster` | the cluster UIs |
 | `http-public` | the public fugleramme pages and `status.arnegiacomo.dev` |
 | `wyoming` | Whisper `:10300` and Piper `:10200` on the model server |

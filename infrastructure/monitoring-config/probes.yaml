@@ -1,7 +1,7 @@
 # Blackbox probes. job is the Probe name, instance is the target.
 # The by-IP targets get a device label with the host name, set per IP in each Probe's relabelingConfigs.
 # A 30s interval flips probe_success to 0 within a minute of a target going down.
-# Router, Home Assistant and the two frames.
+# Router, Home Assistant, the frame and the kitchen Pi.
 apiVersion: monitoring.coreos.com/v1
 kind: Probe
 metadata:
@@ -36,10 +36,10 @@ spec:
         - sourceLabels: [instance]
           regex: '(http://)?192\.168\.142\.6([:/].*)?'
           targetLabel: device
-          replacement: fugleramme-kjokken
+          replacement: kitchen
 ---
 # Off-cluster services on the LAN, by IP so they don't depend on Pi-hole: Home Assistant, Ollama on the model server,
-# the frame apps and birdnet-go on fugleramme (.5) and fugleramme-kjokken (.6).
+# the frame app on fugleramme (.5), and birdnet-go on fugleramme and kitchen (.6).
 apiVersion: monitoring.coreos.com/v1
 kind: Probe
 metadata:
@@ -57,7 +57,6 @@ spec:
         - http://192.168.142.3:8123
         - http://192.168.142.4:11434/api/version
         - http://192.168.142.5:8080/health
-        - http://192.168.142.6:8080/health
         - http://192.168.142.5:8090
         - http://192.168.142.6:8090
       relabelingConfigs:
@@ -76,7 +75,7 @@ spec:
         - sourceLabels: [instance]
           regex: '(http://)?192\.168\.142\.6([:/].*)?'
           targetLabel: device
-          replacement: fugleramme-kjokken
+          replacement: kitchen
 ---
 # The Wyoming voice servers on the model server: Whisper (speech to text, :10300) and Piper (text to speech, :10200).
 apiVersion: monitoring.coreos.com/v1
