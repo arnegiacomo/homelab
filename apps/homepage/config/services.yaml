@@ -103,8 +103,8 @@
         href: http://192.168.142.1
         ping: 192.168.142.1
 
-# One sub-group per frame, with a Kiosk and a BirdNET-Go tile. The cluster instances have no tiles; the http-public probe
-# watches them. fugleramme-tromso is reached over Tailscale through homelab.
+# One sub-group per frame, with a Kiosk and a BirdNET-Go tile. fugleramme-bergen in the cluster has no tile; the
+# http-public probe watches it. fugleramme-tromso is reached over Tailscale through homelab.
 # birdnet-go sends a body on HEAD, on every path, which siteMonitor's HEAD request fails on. So its tiles have no status
 # dot, and the Status field from its health API stands in for one. It also reports the device's own CPU, memory and disk.
 - Frames:
@@ -151,11 +151,24 @@
                 - field: system.disk_space.used_percent
                   label: Disk
                   format: percent
-    # No frame app, only the detector. fugleramme.arnegiacomo.dev shows its birds.
+    # The Pi runs only the detector. Its Kiosk tile is the fugleramme instance in the cluster that reads it, public as
+    # fugleramme.arnegiacomo.dev.
     - kitchen:
+        - Kiosk:
+            icon: mdi-image-frame
+            description: cluster
+            weight: 1
+            href: http://fugleramme-pi5.home.arpa
+            siteMonitor: http://fugleramme-pi5.home.arpa/health
+            widget:
+              type: customapi
+              url: http://kube-prometheus-stack-prometheus.monitoring:9090/api/v1/query?query=probe_success%7Binstance%3D%22https%3A%2F%2Ffugleramme.arnegiacomo.dev%2Fstate%22%7D
+              refreshInterval: 30000
+              mappings: *public
         - BirdNET-Go:
             icon: birdnet.png
             description: ":8090"
+            weight: 2
             href: http://kitchen.home.arpa:8090
             widget:
               type: customapi
