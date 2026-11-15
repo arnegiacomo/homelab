@@ -16,7 +16,7 @@ spec:
   upgrade:
     image: rancher/k3s-upgrade
   # renovate: datasource=github-releases depName=k3s-io/k3s
-  version: v1.37.1+k3s1
+  version: v1.37.2+k3s1
   # Jobs only start in this window. One that has started may run past it.
   window:
     days: [monday, tuesday, wednesday, thursday, friday, saturday, sunday]
