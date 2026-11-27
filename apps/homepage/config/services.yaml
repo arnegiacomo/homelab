@@ -97,6 +97,35 @@
               format:
                 type: percent
                 scale: 100
+    - nas:
+        icon: mdi-nas
+        description: File shares and Time Machine
+        ping: 192.168.142.7
+        # Read from node-exporter through Prometheus. SSD is the hotter of the two drives, Pool is how full the mirror
+        # is, and Backup is the age of the last successful backup to the USB disk.
+        widget:
+          type: prometheusmetric
+          url: http://kube-prometheus-stack-prometheus.monitoring:9090
+          refreshInterval: 30000
+          metrics:
+            - label: SoC
+              query: node_thermal_zone_temp{job="nas",type="cpu-thermal"}
+              format: *celsius
+            - label: SSD
+              query: max(node_hwmon_temp_celsius{job="nas",chip=~"nvme_.*",sensor="temp1"})
+              format: *celsius
+            - label: Pool
+              query: 1 - node_filesystem_avail_bytes{job="nas",mountpoint="/srv/nas"} / node_filesystem_size_bytes{job="nas",mountpoint="/srv/nas"}
+              format:
+                type: percent
+                scale: 100
+            - label: Backup
+              query: (time() - nas_backup_last_success_timestamp_seconds) / 3600
+              format:
+                type: number
+                suffix: " h ago"
+                options:
+                  maximumFractionDigits: 0
     - Router:
         icon: mdi-router-wireless
         description: AmpliFi
