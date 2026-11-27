@@ -8,7 +8,7 @@ Everything runs in the `monitoring` namespace. Grafana is at `grafana.home.arpa`
 - Prometheus keeps 30 days, up to 18 GB.
 - Prometheus picks up every `ServiceMonitor`, `PodMonitor`, `Probe`, `ScrapeConfig` and `PrometheusRule` in the cluster.
 - Dashboards are ConfigMaps labelled `grafana_dashboard: "1"`. Change them in git; UI edits aren't saved.
-- The homelab's own dashboards are in `infrastructure/monitoring-config`: `Homelab node`, `Homelab uptime`, `Home Assistant` and `Flux Performance`.
+- The homelab's own dashboards are in `infrastructure/monitoring-config`: `Homelab node`, `Homelab uptime`, `NAS`, `Home Assistant` and `Flux Performance`.
 
 After changing the Grafana password in 1Password, reset it:
 
@@ -77,6 +77,8 @@ curl -XPOST localhost:9093/api/v2/alerts -H 'Content-Type: application/json' -d 
 ## NAS
 
 The `ScrapeConfig` `nas` scrapes node_exporter on `192.168.142.7:9100`, and the `icmp` probe pings it. node_exporter's own btrfs and hwmon collectors give the pool's error counters and the drives' temperatures. The backup and scrub timestamps come from the jobs on the [NAS](nas.md#what-runs), through the textfile collector.
+
+The `NAS` dashboard (`grafana.home.arpa/d/nas`) shows the drives' temperatures, how full the pool is, its error counters, the age of the last backup and scrub, and disk and network throughput.
 
 ## Model server
 

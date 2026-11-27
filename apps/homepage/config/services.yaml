@@ -100,6 +100,8 @@
     - nas:
         icon: mdi-nas
         description: File shares and Time Machine
+        # The NAS dashboard in Grafana.
+        href: http://grafana.home.arpa/d/nas
         ping: 192.168.142.7
         # Read from node-exporter through Prometheus. SSD is the hotter of the two drives, Pool is how full the mirror
         # is, and Backup is the age of the last successful backup to the USB disk.

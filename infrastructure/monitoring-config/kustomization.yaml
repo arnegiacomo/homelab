@@ -21,6 +21,10 @@ configMapGenerator:
     namespace: monitoring
     files:
       - dashboards/homelab-uptime.json
+  - name: dashboard-nas
+    namespace: monitoring
+    files:
+      - dashboards/nas.json
   - name: dashboard-homeassistant
     namespace: monitoring
     files:
