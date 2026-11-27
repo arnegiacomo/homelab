@@ -12,12 +12,16 @@ Everything that needs a human. The rest runs on its own.
 - **Discord alert:** each alert says what to look at. Homepage, Grafana and Headlamp show the state.
 - **UptimeRobot email:** see [recovery](recovery.md#homelab-unreachable-from-the-internet).
 - **`BackupMissing`:** check that the backup disk is plugged in, and `journalctl -u homelab-backup` on `homelab`.
+- **`NasBackupMissing`:** check that the backup disk is plugged into `nas`, and `journalctl -u nas-backup` there.
+- **`NasPoolDeviceErrors` or `NasPoolDegraded`:** a drive in the NAS is failing or missing, see [NAS](nas.md#a-drive-fails).
+- **`NasSsdTemperatureHigh`:** the NAS's drives need airflow or heatsinks.
 - **`RebootRequired`:** the automatic reboot isn't working. Check `/var/log/unattended-upgrades/` and reboot by hand.
 - **After a power cut:** nothing, everything starts on its own.
 
 ## Now and then
 
 - On `homelab`: `sudo apt full-upgrade`, and reboot if it installed a kernel. The kernel, firmware, Debian point releases and Tailscale don't update on their own. The `Homelab node` dashboard shows pending updates.
+- On `nas`: `sudo apt full-upgrade`, and reboot if it installed a kernel.
 - `llm/run.sh`, to upgrade Ollama and node_exporter on the model server.
 - Major macOS upgrades on `llm`, by hand over Screen Sharing, then `llm/run.sh`.
 

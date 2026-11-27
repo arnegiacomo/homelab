@@ -12,6 +12,7 @@ A single-node k3s cluster on a Raspberry Pi 5, `homelab`. Flux keeps it in sync 
 | llm | 192.168.142.4 | MacBook Pro model server, Ollama `:11434` |
 | fugleramme | 192.168.142.5 | Bird frame: app `:8080`, BirdNET-Go `:8090` |
 | kitchen | 192.168.142.6 | Raspberry Pi 4B, BirdNET-Go `:8090` |
+| nas | 192.168.142.7 | Raspberry Pi 5, file shares and Time Machine |
 
 ## URLs
 
@@ -37,6 +38,7 @@ bootstrap/wizard.sh                 # store the bootstrap secrets in 1Password
 bootstrap/run.sh pi@homelab.local   # bootstrap the host
 scripts/mac-setup.sh                # set up the Mac to reach the cluster
 llm/run.sh                          # set up or update the model server
+nas/run.sh                          # set up or update the NAS
 frames/run.sh <ssh-target> <name>   # set up or update a remote frame
 scripts/op-items.sh                 # create the generated 1Password items
 scripts/validate.sh                 # validate the repo, before every push
@@ -58,6 +60,7 @@ All the setup scripts are safe to run again. `validate.sh` needs kustomize, kube
 | `infrastructure/` | Controllers and their config |
 | `apps/` | Apps |
 | `llm/` | Model server setup |
+| `nas/` | NAS setup |
 | `frames/` | Remote frame setup |
 | `scripts/` | Repo tooling |
 | `docs/` | Docs |
@@ -77,5 +80,6 @@ All the setup scripts are safe to run again. `validate.sh` needs kustomize, kube
 - [Backups](docs/backups.md)
 - [Recovery](docs/recovery.md)
 - [Model server](docs/llm.md)
+- [NAS](docs/nas.md)
 - [Remote frames](docs/frames.md)
 - [Home Assistant](docs/homeassistant.md)

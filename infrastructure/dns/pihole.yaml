@@ -98,6 +98,7 @@ spec:
                 192.168.142.4 llm.home.arpa
                 192.168.142.5 fugleramme.home.arpa
                 192.168.142.6 kitchen.home.arpa
+                192.168.142.7 nas.home.arpa
                 100.90.99.19 fugleramme-tromso.home.arpa
           ports:
             - name: web

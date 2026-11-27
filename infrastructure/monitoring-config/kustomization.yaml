@@ -5,6 +5,7 @@ resources:
   - probes.yaml
   - homeassistant.yaml
   - llm.yaml
+  - nas.yaml
   - alerts.yaml
 # The Grafana sidecar loads every ConfigMap labelled grafana_dashboard=1, in any namespace.
 generatorOptions:

@@ -58,6 +58,64 @@ spec:
             summary: No backup for over 26 hours
             description: No backup has succeeded since Prometheus started. Check `journalctl -u homelab-backup` on homelab and that the backup disk is plugged in.
 
+    # The NAS (docs/nas.md), scraped as job="nas".
+    - name: homelab-nas
+      rules:
+        # btrfs counts read, write, flush, corruption and generation errors per device, and keeps them across boots.
+        # A scrub that repairs a bad block counts it too.
+        - alert: NasPoolDeviceErrors
+          expr: sum by (device) (node_btrfs_device_errors_total{job="nas"}) > 0
+          labels:
+            severity: critical
+          annotations:
+            summary: The NAS pool has errors on {{ $labels.device }}
+            description: btrfs has counted {{ $value }} errors on {{ $labels.device }}. Check `sudo btrfs device stats /srv/nas` and `sudo dmesg` on nas. `sudo btrfs device stats -z /srv/nas` resets the counters once the cause is fixed.
+        # The pool has two devices. Fewer means it isn't mounted, which is also what a missing drive leads to at
+        # boot. Only while the NAS answers, so a NAS that is down stays a ProbeFailed.
+        - alert: NasPoolDegraded
+          expr: ((count(node_btrfs_device_size_bytes{job="nas"}) or vector(0)) < 2) and on() (up{job="nas"} == 1)
+          for: 10m
+          labels:
+            severity: critical
+          annotations:
+            summary: The NAS pool is not mounted with both drives
+            description: nas reports {{ $value }} of 2 pool devices, so the shares and backups are down. Check `lsblk` and `sudo btrfs filesystem show nas` on nas, see docs/nas.md.
+        # The drives sit under the Pi without airflow, warn at 90C and throttle after that.
+        - alert: NasSsdTemperatureHigh
+          expr: node_hwmon_temp_celsius{job="nas", chip=~"nvme_.*", sensor="temp1"} > 80
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: NAS drive {{ $labels.chip }} is hot
+            description: '{{ $labels.chip }} has been at {{ $value | printf "%.0f" }}C for 10 minutes.'
+        # From the nas-backup timer, which runs nightly at 03:30. A failed run, a missing disk or a stopped timer
+        # all leave the timestamp behind. The second rule covers a NAS that has never written it.
+        - alert: NasBackupMissing
+          expr: time() - nas_backup_last_success_timestamp_seconds > 26 * 3600
+          labels:
+            severity: warning
+          annotations:
+            summary: No NAS backup for over 26 hours
+            description: The last successful backup to the USB disk was {{ $value | humanizeDuration }} ago. Check `journalctl -u nas-backup` on nas and that the backup disk is plugged in.
+        - alert: NasBackupMissing
+          expr: absent(nas_backup_last_success_timestamp_seconds)
+          for: 26h
+          labels:
+            severity: warning
+          annotations:
+            summary: No NAS backup for over 26 hours
+            description: No backup to the USB disk has succeeded since Prometheus started. Check `journalctl -u nas-backup` on nas and that the backup disk is plugged in.
+        # From the nas-scrub timer, which runs on the first of the month. A scrub that finds an error it can't
+        # repair leaves the timestamp behind.
+        - alert: NasScrubMissing
+          expr: time() - nas_scrub_last_success_timestamp_seconds > 35 * 86400
+          labels:
+            severity: warning
+          annotations:
+            summary: No clean NAS scrub for over 35 days
+            description: The last scrub without unrepaired errors was {{ $value | humanizeDuration }} ago. Check `journalctl -u nas-scrub` and `sudo btrfs scrub status /srv/nas` on nas.
+
     - name: homelab-probes
       rules:
         - alert: ProbeFailed

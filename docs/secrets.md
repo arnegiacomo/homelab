@@ -30,10 +30,11 @@ What expires is in [owner tasks](owner-tasks.md#things-that-expire).
 | `kaneo-postgres` | `password` | Kaneo database password |
 | `kaneo-auth-secret` | `password` | Kaneo session signing key |
 
-## Model server and frames
+## Model server, NAS and frames
 
 | 1Password reference | What |
 |---|---|
 | `op://homelab/llm-admin/password` | Admin user `llm` on the model server. Created by `scripts/op-items.sh` |
+| `op://homelab/nas-samba/password` | Samba user `arnegiacomo` on the [NAS](nas.md). Created by `scripts/op-items.sh`. `nas/run.sh` reads it, and `restic-password` for the NAS's backup disk |
 | `op://homelab/tailscale-frames/credential` | Tailscale OAuth client that logs frames in |
 | `op://homelab/fugleramme-<name>/...` | One item per frame, created by `frames/item.sh` |

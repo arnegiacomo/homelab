@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Creates the 1Password items the cluster reads through ESO (ClusterSecretStore `onepassword`), the restic
-# password bootstrap reads, and the model server's admin login.
+# password bootstrap reads, the model server's admin login and the NAS's Samba login.
 # Items that already exist are left alone, so running it again is safe.
 #
 # Usage: scripts/op-items.sh [ssh-target], default pi@homelab. The target is only used to copy
@@ -38,6 +38,8 @@ ensure grafana-admin op item create --vault "$VAULT" --category login --title gr
 ensure fugleramme-tunnel tunnel_item
 ensure llm-admin op item create --vault "$VAULT" --category login --title llm-admin \
   --generate-password=letters,digits,24 username=llm
+ensure nas-samba op item create --vault "$VAULT" --category login --title nas-samba \
+  --generate-password=letters,digits,24 username=arnegiacomo
 ensure restic-password op item create --vault "$VAULT" --category password --title restic-password \
   --generate-password=letters,digits,32
 ensure kaneo-postgres op item create --vault "$VAULT" --category password --title kaneo-postgres \

@@ -22,7 +22,7 @@ The blackbox exporter probes every 30 seconds. The probes are in `infrastructure
 
 | Job | Targets |
 |---|---|
-| `icmp` | router, homeassistant, fugleramme, kitchen |
+| `icmp` | router, homeassistant, fugleramme, kitchen, nas |
 | `http-lan` | Home Assistant `:8123`, Ollama `:11434/api/version`, the frame's `:8080/health`, BirdNET-Go `:8090` on the frame and `kitchen` |
 | `http-cluster` | the cluster UIs |
 | `http-public` | the public fugleramme pages and `status.arnegiacomo.dev` |
@@ -49,6 +49,11 @@ Alertmanager posts to `#alerts` on Discord, see [Discord](discord.md). Its confi
 | `NodeTemperatureHigh` | the SoC is over 75C for 10m |
 | `RebootRequired` | a reboot has been pending for 2 days |
 | `BackupMissing` | the last successful backup is over 26h old |
+| `NasPoolDeviceErrors` | btrfs has counted an error on one of the NAS's drives |
+| `NasPoolDegraded` | the NAS answers but its pool isn't mounted with both drives for 10m |
+| `NasSsdTemperatureHigh` | a NAS drive is over 80C for 10m |
+| `NasBackupMissing` | the NAS's last successful backup is over 26h old |
+| `NasScrubMissing` | the NAS's last clean scrub is over 35 days old |
 | `ProbeFailed` | a probe fails for 5m |
 | `PiholeDown` | both DNS probes fail for 2m |
 | `BlackboxExporterDown` | probe scrapes fail for 5m |
@@ -68,6 +73,10 @@ curl -XPOST localhost:9093/api/v2/alerts -H 'Content-Type: application/json' -d 
 - The `ScrapeConfig` `homeassistant` scrapes `192.168.142.3:8123/api/prometheus` every 60 seconds. Metrics start with `hass_`.
 - Home Assistant needs `prometheus:` with `namespace: hass` in its `configuration.yaml`.
 - The token is the long-lived access token `homelab-prometheus` in Home Assistant, stored in the 1Password item `homeassistant-token`. To rotate it, create a new token, replace `credential`, and delete the old token.
+
+## NAS
+
+The `ScrapeConfig` `nas` scrapes node_exporter on `192.168.142.7:9100`, and the `icmp` probe pings it. node_exporter's own btrfs and hwmon collectors give the pool's error counters and the drives' temperatures. The backup and scrub timestamps come from the jobs on the [NAS](nas.md#what-runs), through the textfile collector.
 
 ## Model server
 
