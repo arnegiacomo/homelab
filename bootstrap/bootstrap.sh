@@ -28,11 +28,11 @@ set -euo pipefail
 shopt -s inherit_errexit
 
 # renovate: datasource=docker depName=ghcr.io/controlplaneio-fluxcd/charts/flux-operator
-FLUX_OPERATOR_VERSION=0.62.1 # keep in sync with clusters/homelab/flux-system/flux-operator.yaml
+FLUX_OPERATOR_VERSION=0.64.0 # keep in sync with clusters/homelab/flux-system/flux-operator.yaml
 # renovate: datasource=github-releases depName=helm/helm
-HELM_VERSION=v4.3.1
+HELM_VERSION=v4.3.2
 # renovate: datasource=github-releases depName=restic/restic extractVersion=^v(?<version>.+)$
-RESTIC_VERSION=0.19.1
+RESTIC_VERSION=0.20.0
 CMDLINE=/boot/firmware/cmdline.txt
 CONFIG_TXT=/boot/firmware/config.txt
 
